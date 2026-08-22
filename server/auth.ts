@@ -29,6 +29,9 @@ export function createSessionStore(config: RuntimeConfig) {
 
 export function setupAuth(app: Express, storage: IStorage) {
   const config = getRuntimeConfig();
+  if (config.isProductionMode) {
+    app.set("trust proxy", 1);
+  }
 
   app.use(
     session({
@@ -59,8 +62,14 @@ export function setupAuth(app: Express, storage: IStorage) {
       return res.status(401).json({ error: "Invalid username or password." });
     }
 
-    req.session.userId = user.id;
-    res.json({ user: publicUser(user) });
+    req.session.regenerate((error) => {
+      if (error) {
+        return res.status(500).json({ error: "Login failed." });
+      }
+
+      req.session.userId = user.id;
+      res.json({ user: publicUser(user) });
+    });
   });
 
   app.post("/api/auth/logout", (req, res) => {

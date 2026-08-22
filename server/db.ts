@@ -1,12 +1,11 @@
-import { Pool, neonConfig } from "@neondatabase/serverless";
-import { drizzle, type NeonDatabase } from "drizzle-orm/neon-serverless";
-import ws from "ws";
+import pg, { type Pool as PgPool } from "pg";
+import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import * as schema from "@shared/schema";
 
-neonConfig.webSocketConstructor = ws;
+const { Pool } = pg;
 
-let cachedPool: Pool | undefined;
-let cachedDb: NeonDatabase<typeof schema> | undefined;
+let cachedPool: PgPool | undefined;
+let cachedDb: NodePgDatabase<typeof schema> | undefined;
 
 export function getPool() {
   if (!process.env.DATABASE_URL) {
@@ -18,6 +17,12 @@ export function getPool() {
 }
 
 export function getDb() {
-  cachedDb ??= drizzle({ client: getPool(), schema });
+  cachedDb ??= drizzle(getPool(), { schema });
   return cachedDb;
+}
+
+export async function resetDatabaseConnectionForTests() {
+  await cachedPool?.end();
+  cachedPool = undefined;
+  cachedDb = undefined;
 }
