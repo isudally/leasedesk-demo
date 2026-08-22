@@ -1,15 +1,28 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import ws from "ws";
+import pg, { type Pool as PgPool } from "pg";
+import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import * as schema from "@shared/schema";
 
-neonConfig.webSocketConstructor = ws;
+const { Pool } = pg;
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
+let cachedPool: PgPool | undefined;
+let cachedDb: NodePgDatabase<typeof schema> | undefined;
+
+export function getPool() {
+  if (!process.env.DATABASE_URL) {
+    throw new Error("DATABASE_URL must be set for LeaseDesk production storage.");
+  }
+
+  cachedPool ??= new Pool({ connectionString: process.env.DATABASE_URL });
+  return cachedPool;
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle({ client: pool, schema });
+export function getDb() {
+  cachedDb ??= drizzle(getPool(), { schema });
+  return cachedDb;
+}
+
+export async function resetDatabaseConnectionForTests() {
+  await cachedPool?.end();
+  cachedPool = undefined;
+  cachedDb = undefined;
+}

@@ -16,6 +16,8 @@ import {
   type Expense,
   type InsertExpense,
 } from "@shared/schema";
+import { getRuntimeConfig } from "./config";
+import { DatabaseStorage } from "./db-storage";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -494,4 +496,8 @@ class DemoStorage implements IStorage {
   }
 }
 
-export const storage = new DemoStorage();
+export function createStorage(): IStorage {
+  return getRuntimeConfig().isProductionMode ? new DatabaseStorage() : new DemoStorage();
+}
+
+export const storage = createStorage();
