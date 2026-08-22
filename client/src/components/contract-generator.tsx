@@ -374,7 +374,7 @@ export function ContractGenerator({ tenant, landlord, store }: ContractGenerator
     }
     addSpace(5);
 
-    // Clause 17: Local tax handling excluded from validation demo
+    // Clause 17: Local tax handling excluded from LeaseDesk commercial scope.
     addText('    17.   Les taxes locales applicables sont traitees separement du loyer mensuel.');
     addSpace(8);
 
@@ -415,12 +415,12 @@ export function ContractGenerator({ tenant, landlord, store }: ContractGenerator
       }
     }
 
-    // Add demo footer at bottom of last page
+    // Add footer at bottom of last page
     const pageHeight = doc.internal.pageSize.getHeight();
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(128, 128, 128);
-    const footerText = 'Document generated via LeaseDesk validation demo | Fictional data';
+    const footerText = 'Document generated via LeaseDesk';
     const footerWidth = doc.getTextWidth(footerText);
     doc.text(footerText, (pageWidth - footerWidth) / 2, pageHeight - 10);
     doc.setTextColor(0, 0, 0);
@@ -435,12 +435,12 @@ export function ContractGenerator({ tenant, landlord, store }: ContractGenerator
       const doc = await buildContractPDF();
       
       // Save PDF
-      const fileName = `Contrat_${tenant.businessName || tenant.tenantName}_${new Date().toISOString().split('T')[0]}.pdf`;
+      const fileName = `Lease_${tenant.businessName || tenant.tenantName}_${new Date().toISOString().split('T')[0]}.pdf`;
       doc.save(fileName);
 
       toast({
-        title: "Contrat généré",
-        description: "Le contrat PDF a été téléchargé avec succès.",
+        title: "Contract generated",
+        description: "The lease contract PDF was downloaded successfully.",
       });
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -461,17 +461,17 @@ export function ContractGenerator({ tenant, landlord, store }: ContractGenerator
       // Generate complete PDF using shared logic
       const doc = await buildContractPDF();
       const pdfBlob = doc.output('blob');
-      const fileName = `Contrat_${tenant.businessName || tenant.tenantName}_${new Date().toISOString().split('T')[0]}.pdf`;
+      const fileName = `Lease_${tenant.businessName || tenant.tenantName}_${new Date().toISOString().split('T')[0]}.pdf`;
       const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
       
       const rentAmount = parseFloat(tenant.monthlyRent.toString()).toLocaleString();
-      const text = `Commercial lease demo - ${tenant.businessName || tenant.tenantName}\nRent: Rs ${rentAmount}/month\nPeriod: ${formatDate(tenant.leaseStart)} - ${formatDate(tenant.leaseEnd)}\nValidation-demo document`;
+      const text = `Commercial lease - ${tenant.businessName || tenant.tenantName}\nRent: Rs ${rentAmount}/month\nPeriod: ${formatDate(tenant.leaseStart)} - ${formatDate(tenant.leaseEnd)}`;
       
       // Check if Web Share API is supported with file sharing
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
           await navigator.share({
-            title: 'Contrat de Location',
+            title: 'Lease Contract',
             text: text,
             files: [file],
           });
@@ -521,8 +521,8 @@ export function ContractGenerator({ tenant, landlord, store }: ContractGenerator
             <FileText className="w-7 h-7 text-primary" />
           </div>
           <div>
-            <h3 className="text-xl font-semibold text-foreground">Contrat de Location</h3>
-            <p className="text-lg text-muted-foreground">Générer le contrat en PDF</p>
+            <h3 className="text-xl font-semibold text-foreground">Lease Contract</h3>
+            <p className="text-lg text-muted-foreground">Generate the lease contract PDF</p>
           </div>
         </div>
 
@@ -534,7 +534,7 @@ export function ContractGenerator({ tenant, landlord, store }: ContractGenerator
             data-testid="button-generate-contract"
           >
             <Download className="w-6 h-6 mr-2" />
-            {isGenerating ? "Génération..." : "Télécharger le Contrat"}
+            {isGenerating ? "Generating..." : "Download Contract"}
           </Button>
 
           <Button

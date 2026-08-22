@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { ContractGenerator } from "@/components/contract-generator";
 import { PaymentHistory } from "@/components/payment-history";
 import { ReceiptGenerator } from "@/components/receipt-generator";
+import { RecordPaymentForm } from "@/components/record-payment-form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -20,7 +21,11 @@ export default function TenantDetails() {
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
-  const [paidMonthIndexes, setPaidMonthIndexes] = useState<Set<number>>(new Set());
+  const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
+  const [recordPaymentContext, setRecordPaymentContext] = useState<{
+    monthYear: string;
+    outstandingBalance: number;
+  } | null>(null);
   const [documentFile, setDocumentFile] = useState<File | null>(null);
   const [documentType, setDocumentType] = useState("lease");
   const { toast } = useToast();
@@ -97,7 +102,7 @@ export default function TenantDetails() {
     },
     onSuccess: () => {
       toast({
-        title: "Locataire archivé",
+        title: "Tenant archived",
         description: "Le locataire a été archivé avec succès.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/tenants"] });
@@ -119,7 +124,7 @@ export default function TenantDetails() {
     },
     onSuccess: () => {
       toast({
-        title: "Locataire archivé",
+        title: "Tenant archived",
         description: "Le locataire a été archivé avec succès.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/tenants"] });
@@ -200,11 +205,11 @@ export default function TenantDetails() {
     const daysUntilExpiry = Math.floor((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     
     if (daysUntilExpiry < 0) {
-      return { status: "expiré", color: "hsl(0 84% 60%)" };
+      return { status: "Expired", color: "hsl(0 84% 60%)" };
     } else if (daysUntilExpiry <= 120) {
-      return { status: "expire bientôt", color: "hsl(45 93% 47%)" };
+      return { status: "Expiring", color: "hsl(45 93% 47%)" };
     } else {
-      return { status: "actif", color: "hsl(142 71% 45%)" };
+      return { status: "Current Lease", color: "hsl(142 71% 45%)" };
     }
   };
 
@@ -227,7 +232,7 @@ export default function TenantDetails() {
       <div className="min-h-screen bg-background">
         <div className="max-w-7xl mx-auto px-4 py-6">
           <Card className="p-6">
-            <p className="text-lg text-muted-foreground">Locataire non trouvé</p>
+            <p className="text-lg text-muted-foreground">Tenant not found</p>
           </Card>
         </div>
       </div>
@@ -235,6 +240,14 @@ export default function TenantDetails() {
   }
 
   const { status, color } = getLeaseStatus(tenant.leaseEnd);
+
+  const openArrearsPaymentFlow = (month: ArrearsData["unpaidMonths"][number]) => {
+    setRecordPaymentContext({
+      monthYear: month.monthYear,
+      outstandingBalance: month.balance,
+    });
+    setRecordPaymentOpen(true);
+  };
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -248,7 +261,7 @@ export default function TenantDetails() {
             data-testid="button-back"
           >
             <ArrowLeft className="w-5 h-5 mr-2" />
-            Retour
+            Back
           </Button>
 
           <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -286,7 +299,7 @@ export default function TenantDetails() {
         {/* Tenant Information */}
         <Card className="bg-card rounded-lg shadow-md mb-6">
           <CardHeader className="p-6">
-            <CardTitle className="text-2xl font-semibold text-foreground">Informations du Locataire</CardTitle>
+            <CardTitle className="text-2xl font-semibold text-foreground">Tenant Information</CardTitle>
           </CardHeader>
           <CardContent className="p-6 pt-0">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -433,12 +446,12 @@ export default function TenantDetails() {
                 {arrears.totalArrears > 0 ? (
                   <>
                     <AlertCircle className="w-7 h-7 text-red-500" />
-                    Arriérés de Paiement
+                    Payment Arrears
                   </>
                 ) : (
                   <>
                     <CheckCircle className="w-7 h-7 text-green-500" />
-                    Statut de Paiement
+                    Payment Status
                   </>
                 )}
               </CardTitle>
@@ -452,13 +465,13 @@ export default function TenantDetails() {
                       <AlertCircle className="w-8 h-8 text-red-500 flex-shrink-0 mt-1" />
                       <div className="flex-1">
                         <p className="text-lg font-semibold text-red-700 dark:text-red-400 mb-2">
-                          Montant Total Dû
+                          Total Amount Due
                         </p>
                         <p className="text-3xl font-bold text-red-600 dark:text-red-400">
                           Rs {arrears.totalArrears.toLocaleString()}
                         </p>
                         <p className="text-lg text-red-600/80 dark:text-red-400/80 mt-2">
-                          {arrears.unpaidMonths.length} mois impayé{arrears.unpaidMonths.length > 1 ? 's' : ''}
+                          {arrears.unpaidMonths.length} unpaid month{arrears.unpaidMonths.length > 1 ? 's' : ''}
                         </p>
                       </div>
                     </div>
@@ -468,17 +481,17 @@ export default function TenantDetails() {
                   {arrears.oldestUnpaidMonth && (
                     <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-6 rounded-lg">
                       <p className="text-lg font-semibold text-amber-800 dark:text-amber-400 mb-3">
-                        Plus Ancien Mois Impayé
+                        Oldest Overdue Month
                       </p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <p className="text-base text-muted-foreground">Mois</p>
+                          <p className="text-base text-muted-foreground">Month</p>
                           <p className="text-lg font-medium text-foreground">
                             {arrears.oldestUnpaidMonth.monthYear}
                           </p>
                         </div>
                         <div>
-                          <p className="text-base text-muted-foreground">Solde Restant</p>
+                          <p className="text-base text-muted-foreground">Outstanding Balance</p>
                           <p className="text-lg font-medium text-amber-700 dark:text-amber-400">
                             Rs {arrears.oldestUnpaidMonth.balance.toLocaleString()}
                           </p>
@@ -490,7 +503,7 @@ export default function TenantDetails() {
                   {/* Unpaid Months Summary - Show ALL with scrolling */}
                   <div>
                     <p className="text-lg font-semibold text-foreground mb-4">
-                      Mois Impayés ({arrears.unpaidMonths.length})
+                      Outstanding Months ({arrears.unpaidMonths.length})
                     </p>
                     <div className="max-h-[400px] overflow-y-auto space-y-3 pr-2">
                       {arrears.unpaidMonths.map((month, index) => (
@@ -502,7 +515,7 @@ export default function TenantDetails() {
                             <p className="text-lg font-medium text-foreground">{month.monthYear}</p>
                             {month.partiallyPaid && (
                               <p className="text-base text-amber-600 dark:text-amber-400">
-                                Partiellement payé: Rs {month.amountPaid.toLocaleString()}
+                                Partially Paid: Rs {month.amountPaid.toLocaleString()}
                               </p>
                             )}
                           </div>
@@ -512,52 +525,12 @@ export default function TenantDetails() {
                             </p>
                             <Button
                               size="sm"
-                              variant={paidMonthIndexes.has(index) ? "default" : "outline"}
-                              className={`h-12 px-4 min-w-24 ${paidMonthIndexes.has(index) ? 'bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 text-white border-green-600' : ''}`}
-                              data-testid={`button-mark-paid-${index}`}
-                              disabled={paidMonthIndexes.has(index)}
-                              onClick={() => {
-                                // Generate unique receipt number: REC-YYYY-NNNN
-                                const year = new Date().getFullYear();
-                                const randomNum = Math.floor(1000 + Math.random() * 9000);
-                                const receiptNumber = `REC-${year}-${randomNum}`;
-                                
-                                // Mark as paid shortcut - create full payment
-                                const paymentData = {
-                                  tenantId: tenant.id,
-                                  paymentDate: new Date().toISOString().split('T')[0],
-                                  monthYear: month.monthYear,
-                                  rentAmount: month.rentAmount.toString(),
-                                  utilitiesAmount: month.utilitiesAmount.toString(),
-                                  paymentAmount: month.totalDue.toString(),
-                                  receivedBy: landlord.fullName,
-                                  tdsPaidToMRA: false,
-                                  receiptNumber: receiptNumber,
-                                };
-                                
-                                apiRequest("POST", "/api/payments", paymentData)
-                                  .then(() => {
-                                    // Mark as paid immediately
-                                    setPaidMonthIndexes(prev => new Set(prev).add(index));
-                                    
-                                    toast({
-                                      title: "Paiement enregistré",
-                                      description: `${month.monthYear} marqué comme payé (${receiptNumber})`,
-                                    });
-                                    queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
-                                    queryClient.invalidateQueries({ queryKey: ["/api/tenants"] });
-                                    queryClient.invalidateQueries({ queryKey: ["/api/tenants", id, "arrears"] });
-                                  })
-                                  .catch((error) => {
-                                    toast({
-                                      title: "Erreur",
-                                      description: error.message || "Échec de l'enregistrement",
-                                      variant: "destructive",
-                                    });
-                                  });
-                              }}
+                              variant="outline"
+                              className="h-12 px-4 min-w-32"
+                              data-testid={`button-record-arrears-payment-${index}`}
+                              onClick={() => openArrearsPaymentFlow(month)}
                             >
-                              {paidMonthIndexes.has(index) ? '✓ Payé' : 'Payé'}
+                              Record Payment
                             </Button>
                           </div>
                         </div>
@@ -571,10 +544,10 @@ export default function TenantDetails() {
                     <CheckCircle className="w-8 h-8 text-green-500 flex-shrink-0 mt-1" />
                     <div>
                       <p className="text-lg font-semibold text-green-700 dark:text-green-400 mb-2">
-                        Tous les Paiements à Jour
+                        All Payments Up To Date
                       </p>
                       <p className="text-lg text-green-600/80 dark:text-green-400/80">
-                        Aucun arriéré. Le locataire est à jour dans ses paiements.
+                        No arrears. This tenant is up to date with payments.
                       </p>
                     </div>
                   </div>
@@ -688,7 +661,7 @@ export default function TenantDetails() {
               </div>
             ) : (
               <p className="text-lg text-muted-foreground">
-                No document metadata recorded for this demo tenant.
+                No document metadata recorded for this tenant.
               </p>
             )}
           </CardContent>
@@ -709,7 +682,7 @@ export default function TenantDetails() {
         <Dialog open={!!selectedPayment} onOpenChange={(open) => !open && setSelectedPayment(null)}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-2xl">Reçu de Paiement</DialogTitle>
+              <DialogTitle className="text-2xl">Payment Receipt</DialogTitle>
             </DialogHeader>
             <ReceiptGenerator
               payment={{
@@ -741,13 +714,45 @@ export default function TenantDetails() {
         </Dialog>
       )}
 
+      {/* Record Payment Dialog */}
+      <Dialog
+        open={recordPaymentOpen}
+        onOpenChange={(open) => {
+          setRecordPaymentOpen(open);
+          if (!open) {
+            setRecordPaymentContext(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">Record Payment</DialogTitle>
+            <DialogDescription>
+              {recordPaymentContext
+                ? `Review and record payment for ${recordPaymentContext.monthYear}. Outstanding balance: Rs ${recordPaymentContext.outstandingBalance.toLocaleString()}.`
+                : "Review and record this tenant payment."}
+            </DialogDescription>
+          </DialogHeader>
+          <RecordPaymentForm
+            preselectedTenantId={tenant.id}
+            onSuccess={() => {
+              setRecordPaymentOpen(false);
+              setRecordPaymentContext(null);
+              queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/tenants"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/tenants", id, "arrears"] });
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
       {/* Archive Confirmation Dialog */}
       <Dialog open={archiveDialogOpen} onOpenChange={setArchiveDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Archiver le locataire</DialogTitle>
+            <DialogTitle>Archive Tenant</DialogTitle>
             <DialogDescription>
-              Êtes-vous sûr de vouloir archiver {tenant.tenantName}? Le locataire sera marqué comme inactif mais toutes les données seront conservées.
+              Are you sure you want to archive {tenant.tenantName}? The tenant will be marked inactive and all history will be retained.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
@@ -756,7 +761,7 @@ export default function TenantDetails() {
               onClick={() => setArchiveDialogOpen(false)}
               data-testid="button-cancel-archive"
             >
-              Annuler
+              Cancel
             </Button>
             <Button
               variant="default"
@@ -764,7 +769,7 @@ export default function TenantDetails() {
               disabled={archiveTenantMutation.isPending}
               data-testid="button-confirm-archive"
             >
-              {archiveTenantMutation.isPending ? "Archivage..." : "Confirmer"}
+              {archiveTenantMutation.isPending ? "Archiving..." : "Confirm"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -774,9 +779,9 @@ export default function TenantDetails() {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Archiver le locataire</DialogTitle>
+            <DialogTitle>Archive Tenant</DialogTitle>
             <DialogDescription>
-              Cette action conserve l'historique du locataire et masque le dossier des vues actives.
+              This keeps tenant history and hides the record from active views.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
@@ -785,7 +790,7 @@ export default function TenantDetails() {
               onClick={() => setDeleteDialogOpen(false)}
               data-testid="button-cancel-delete"
             >
-              Annuler
+              Cancel
             </Button>
             <Button
               variant="default"
@@ -793,7 +798,7 @@ export default function TenantDetails() {
               disabled={deleteTenantMutation.isPending}
               data-testid="button-confirm-delete"
             >
-              {deleteTenantMutation.isPending ? "Archivage..." : "Archiver"}
+              {deleteTenantMutation.isPending ? "Archiving..." : "Archive"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -52,7 +52,7 @@ export function PaymentHistory({ tenantId, onSelectPayment }: PaymentHistoryProp
     return (
       <Card className="bg-card rounded-lg shadow-md">
         <CardHeader className="p-6 pb-4">
-          <CardTitle className="text-2xl font-semibold">Historique des Paiements</CardTitle>
+          <CardTitle className="text-2xl font-semibold">Payment History</CardTitle>
         </CardHeader>
         <CardContent className="p-6 pt-0">
           <div className="space-y-4">
@@ -69,12 +69,12 @@ export function PaymentHistory({ tenantId, onSelectPayment }: PaymentHistoryProp
     return (
       <Card className="bg-card rounded-lg shadow-md">
         <CardHeader className="p-6 pb-4">
-          <CardTitle className="text-2xl font-semibold">Historique des Paiements</CardTitle>
+          <CardTitle className="text-2xl font-semibold">Payment History</CardTitle>
         </CardHeader>
         <CardContent className="p-6 pt-0">
           <div className="text-center py-8">
             <Receipt className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-            <p className="text-lg text-muted-foreground">Aucun historique disponible</p>
+            <p className="text-lg text-muted-foreground">No payment history available</p>
           </div>
         </CardContent>
       </Card>
@@ -95,22 +95,22 @@ export function PaymentHistory({ tenantId, onSelectPayment }: PaymentHistoryProp
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <CardTitle className="text-2xl font-semibold mb-2">
-              Historique des Paiements
+              Payment History
             </CardTitle>
             <p className="text-lg text-muted-foreground">
-              {paidMonthsCount} / {arrears.allMonths.length} mois payés
+              {paidMonthsCount} / {arrears.allMonths.length} months paid
             </p>
           </div>
           <div className="flex flex-col gap-3 text-right">
             <div>
-              <p className="text-base text-muted-foreground">Total payé</p>
+              <p className="text-base text-muted-foreground">Total paid</p>
               <p className="text-xl font-bold text-green-600 dark:text-green-400">
                 Rs {totalPaid.toLocaleString()}
               </p>
             </div>
             {arrears.totalArrears > 0 && (
               <div>
-                <p className="text-base text-muted-foreground">Arriérés</p>
+                <p className="text-base text-muted-foreground">Arrears</p>
                 <p className="text-xl font-bold text-red-600 dark:text-red-400">
                   Rs {arrears.totalArrears.toLocaleString()}
                 </p>
@@ -166,26 +166,26 @@ export function PaymentHistory({ tenantId, onSelectPayment }: PaymentHistoryProp
                               color: 'white'
                             }}
                           >
-                            {month.isPaid ? 'Payé' : month.partiallyPaid ? 'Partiel' : 'Impayé'}
+                            {month.isPaid ? 'Paid' : month.partiallyPaid ? 'Partial' : 'Unpaid'}
                           </Badge>
                         </div>
 
                         {/* Payment details */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-base">
                           <div>
-                            <p className="text-muted-foreground">Dû</p>
+                            <p className="text-muted-foreground">Due</p>
                             <p className="font-medium text-foreground">
                               Rs {month.totalDue.toLocaleString()}
                             </p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground">Payé</p>
+                            <p className="text-muted-foreground">Paid</p>
                             <p className="font-medium text-green-600 dark:text-green-400">
                               Rs {month.amountPaid.toLocaleString()}
                             </p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground">Solde</p>
+                            <p className="text-muted-foreground">Balance</p>
                             <p 
                               className="font-semibold"
                               style={{ color: month.balance > 0 ? statusColor : 'inherit' }}
@@ -202,7 +202,7 @@ export function PaymentHistory({ tenantId, onSelectPayment }: PaymentHistoryProp
                   {monthPayments.length > 0 && (
                     <div className="mt-4 pt-4 border-t border-border space-y-2">
                       <p className="text-base font-medium text-muted-foreground mb-2">
-                        Reçus ({monthPayments.length}):
+                        Receipts ({monthPayments.length}):
                       </p>
                       {monthPayments.map((payment) => (
                         <button
@@ -218,7 +218,7 @@ export function PaymentHistory({ tenantId, onSelectPayment }: PaymentHistoryProp
                                 {payment.receiptNumber}
                               </span>
                               <span className="text-base text-muted-foreground">
-                                • {new Date(payment.paymentDate).toLocaleDateString("fr-FR")}
+                                • {new Date(payment.paymentDate).toLocaleDateString("en-US")}
                               </span>
                             </div>
                             <span className="text-base font-semibold text-green-600 dark:text-green-400">

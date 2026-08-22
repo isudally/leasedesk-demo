@@ -159,9 +159,9 @@ export default function Home() {
               </div>
               <div>
                 <h1 className="text-2xl font-semibold text-foreground" data-testid="app-title">
-                  Riverton Market Plaza
+                  LeaseDesk Portfolio
                 </h1>
-                <p className="text-lg text-muted-foreground">LeaseDesk validation dashboard</p>
+                <p className="text-lg text-muted-foreground">Commercial property operations dashboard</p>
               </div>
             </div>
           </div>
@@ -522,7 +522,7 @@ export default function Home() {
       <Dialog open={recordPaymentDialogOpen} onOpenChange={setRecordPaymentDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-2xl">Enregistrer un Paiement</DialogTitle>
+            <DialogTitle className="text-2xl">Record Payment</DialogTitle>
           </DialogHeader>
           <RecordPaymentForm 
             onSuccess={() => setRecordPaymentDialogOpen(false)} 
@@ -537,7 +537,7 @@ export default function Home() {
       <Dialog open={addExpenseDialogOpen} onOpenChange={setAddExpenseDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-2xl">Ajouter une Dépense / Add Expense</DialogTitle>
+            <DialogTitle className="text-2xl">Add Expense</DialogTitle>
           </DialogHeader>
           <AddExpenseForm onSuccess={() => setAddExpenseDialogOpen(false)} />
         </DialogContent>
@@ -546,7 +546,7 @@ export default function Home() {
       <Dialog open={renewContractDialogOpen} onOpenChange={setRenewContractDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-2xl">Renouveler Contrat / Renew Contract</DialogTitle>
+            <DialogTitle className="text-2xl">Renew Lease</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-lg text-muted-foreground">
@@ -617,7 +617,7 @@ export default function Home() {
         <Dialog open={!!receiptPaymentId} onOpenChange={(open) => !open && setReceiptPaymentId(null)}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-2xl">Reçu de Paiement / Payment Receipt</DialogTitle>
+              <DialogTitle className="text-2xl">Payment Receipt</DialogTitle>
             </DialogHeader>
             <ReceiptGenerator
               payment={{

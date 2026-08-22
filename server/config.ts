@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+
 export type LeaseDeskMode = "demo" | "production";
 
 export interface RuntimeConfig {
@@ -7,6 +10,7 @@ export interface RuntimeConfig {
   adminUsername?: string;
   adminPassword?: string;
   adminPasswordHash?: string;
+  uploadDir?: string;
 }
 
 const VALID_MODES = new Set(["demo", "production"]);
@@ -31,6 +35,7 @@ export function getRuntimeConfig(env: NodeJS.ProcessEnv = process.env): RuntimeC
     adminUsername: env.LEASEDESK_ADMIN_USERNAME,
     adminPassword: env.LEASEDESK_ADMIN_PASSWORD,
     adminPasswordHash: env.LEASEDESK_ADMIN_PASSWORD_HASH,
+    uploadDir: env.LEASEDESK_UPLOAD_DIR,
   };
 }
 
@@ -48,10 +53,34 @@ export function validateRuntimeConfig(env: NodeJS.ProcessEnv = process.env) {
   if (!config.adminPassword && !config.adminPasswordHash) {
     missing.push("LEASEDESK_ADMIN_PASSWORD or LEASEDESK_ADMIN_PASSWORD_HASH");
   }
+  if (!config.uploadDir) missing.push("LEASEDESK_UPLOAD_DIR");
 
   if (missing.length > 0) {
     throw new Error(`Missing required LeaseDesk production configuration: ${missing.join(", ")}.`);
   }
 
+  validateProductionUploadDir(config.uploadDir!);
+
   return config;
+}
+
+function validateProductionUploadDir(uploadDir: string) {
+  const resolved = path.resolve(uploadDir);
+  let stat: fs.Stats;
+
+  try {
+    stat = fs.statSync(resolved);
+  } catch {
+    throw new Error("LEASEDESK_UPLOAD_DIR must point to an existing writable directory in production.");
+  }
+
+  if (!stat.isDirectory()) {
+    throw new Error("LEASEDESK_UPLOAD_DIR must point to a directory in production.");
+  }
+
+  try {
+    fs.accessSync(resolved, fs.constants.R_OK | fs.constants.W_OK);
+  } catch {
+    throw new Error("LEASEDESK_UPLOAD_DIR must be readable and writable in production.");
+  }
 }

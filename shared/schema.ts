@@ -306,3 +306,22 @@ export const insertExpenseSchema = createInsertSchema(expenses).omit({
 
 export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 export type Expense = typeof expenses.$inferSelect;
+
+// Audit events for sensitive operational actions.
+export const auditEvents = pgTable("audit_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventType: text("event_type").notNull(),
+  entityType: text("entity_type").notNull(),
+  entityId: varchar("entity_id").notNull(),
+  userId: varchar("user_id"),
+  detail: text("detail"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertAuditEventSchema = createInsertSchema(auditEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAuditEvent = z.infer<typeof insertAuditEventSchema>;
+export type AuditEvent = typeof auditEvents.$inferSelect;

@@ -4,8 +4,8 @@ import fsp from "node:fs/promises";
 import path from "node:path";
 import multer from "multer";
 import type { Request } from "express";
+import { getRuntimeConfig } from "./config";
 
-export const DOCUMENT_UPLOAD_ROOT = path.resolve(process.cwd(), process.env.LEASEDESK_UPLOAD_DIR ?? "data/uploads");
 export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 
 const ALLOWED_DOCUMENT_TYPES = new Set(["application/pdf", "image/jpeg", "image/png"]);
@@ -17,8 +17,9 @@ const EXTENSIONS_BY_MIME: Record<string, string> = {
 
 const storage = multer.diskStorage({
   destination: (_req, _file, callback) => {
-    fs.mkdirSync(DOCUMENT_UPLOAD_ROOT, { recursive: true });
-    callback(null, DOCUMENT_UPLOAD_ROOT);
+    const uploadRoot = getDocumentUploadRoot();
+    fs.mkdirSync(uploadRoot, { recursive: true });
+    callback(null, uploadRoot);
   },
   filename: (_req, file, callback) => {
     const extension = EXTENSIONS_BY_MIME[file.mimetype] ?? path.extname(file.originalname).toLowerCase();
@@ -37,9 +38,18 @@ export const uploadTenantDocument = multer({
   },
 }).single("file");
 
+export function getDocumentUploadRoot(env: NodeJS.ProcessEnv = process.env) {
+  const config = getRuntimeConfig(env);
+  if (config.isProductionMode && !config.uploadDir) {
+    throw new Error("LEASEDESK_UPLOAD_DIR is required for production document storage.");
+  }
+  return path.resolve(process.cwd(), config.uploadDir ?? "data/uploads");
+}
+
 export function documentPathFromStorageKey(storageKey: string) {
-  const resolved = path.resolve(DOCUMENT_UPLOAD_ROOT, storageKey);
-  if (!resolved.startsWith(`${DOCUMENT_UPLOAD_ROOT}${path.sep}`)) {
+  const uploadRoot = getDocumentUploadRoot();
+  const resolved = path.resolve(uploadRoot, storageKey);
+  if (!resolved.startsWith(`${uploadRoot}${path.sep}`)) {
     throw new Error("Invalid document reference.");
   }
   return resolved;

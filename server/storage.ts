@@ -15,6 +15,8 @@ import {
   type InsertSetting,
   type Expense,
   type InsertExpense,
+  type AuditEvent,
+  type InsertAuditEvent,
 } from "@shared/schema";
 import { getRuntimeConfig } from "./config";
 import { DatabaseStorage } from "./db-storage";
@@ -63,6 +65,8 @@ export interface IStorage {
   updateExpense(id: string, expense: Partial<InsertExpense>): Promise<Expense>;
   deleteExpense(id: string): Promise<void>;
   archiveExpense(id: string): Promise<Expense>;
+  createAuditEvent(event: InsertAuditEvent): Promise<AuditEvent>;
+  getAuditEvents(entityType?: string, entityId?: string): Promise<AuditEvent[]>;
 }
 
 const now = () => new Date("2026-08-20T08:00:00.000Z");
@@ -301,6 +305,7 @@ class DemoStorage implements IStorage {
   private documents = demoDocuments;
   private settings = demoSettings;
   private expenses = demoExpenses;
+  private auditEvents: AuditEvent[] = [];
 
   async getUser(userId: string) { return this.users.find((user) => user.id === userId); }
   async getUserByUsername(username: string) { return this.users.find((user) => user.username === username); }
@@ -532,6 +537,27 @@ class DemoStorage implements IStorage {
   async deleteExpense() { throw new Error("Deletes are disabled in the LeaseDesk demo."); }
   async archiveExpense(expenseId: string) {
     return this.updateById<Expense>(this.expenses, expenseId, { isArchived: true, archivedAt: now() } as Partial<Expense>);
+  }
+
+  async createAuditEvent(event: InsertAuditEvent) {
+    const created: AuditEvent = {
+      id: makeId("audit", this.auditEvents.length + 1),
+      eventType: event.eventType,
+      entityType: event.entityType,
+      entityId: event.entityId,
+      userId: event.userId ?? null,
+      detail: event.detail ?? null,
+      createdAt: now(),
+    };
+    this.auditEvents.push(created);
+    return created;
+  }
+
+  async getAuditEvents(entityType?: string, entityId?: string) {
+    return this.auditEvents
+      .filter((event) => !entityType || event.entityType === entityType)
+      .filter((event) => !entityId || event.entityId === entityId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
   private updateById<T extends { id: string }>(items: T[], itemId: string, update: Partial<Omit<T, "id">>) {

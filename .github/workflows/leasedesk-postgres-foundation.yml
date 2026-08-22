@@ -38,6 +38,7 @@ jobs:
       SESSION_SECRET: leasedesk-postgres-foundation-ci-session-secret
       LEASEDESK_ADMIN_USERNAME: owner
       LEASEDESK_ADMIN_PASSWORD: correct-password
+      LEASEDESK_UPLOAD_DIR: /tmp/leasedesk-postgres-foundation-uploads
 
     steps:
       - name: Checkout
@@ -64,7 +65,7 @@ jobs:
         run: npm run build
 
       - name: Initialise clean Postgres schema
-        run: npm run db:push -- --force
+        run: mkdir -p "$LEASEDESK_UPLOAD_DIR" && npm run db:push -- --force
 
       - name: Verify Postgres persistence and session storage
         run: npm run test:postgres

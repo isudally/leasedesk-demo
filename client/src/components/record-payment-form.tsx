@@ -154,8 +154,8 @@ export function RecordPaymentForm({ preselectedTenantId, onSuccess, onPaymentRec
         queryClient.invalidateQueries({ queryKey: ["/api/tenants", selectedTenantId, "arrears"] });
       }
       toast({
-        title: "Paiement enregistré",
-        description: "Le paiement a été enregistré avec succès.",
+        title: "Payment recorded",
+        description: "The payment was recorded successfully.",
       });
       
       // Trigger receipt generation
@@ -170,7 +170,7 @@ export function RecordPaymentForm({ preselectedTenantId, onSuccess, onPaymentRec
     onError: (error) => {
       toast({
         title: "Erreur",
-        description: "Impossible d'enregistrer le paiement.",
+        description: "Could not record the payment.",
         variant: "destructive",
       });
       console.error("Payment error:", error);
@@ -199,7 +199,7 @@ export function RecordPaymentForm({ preselectedTenantId, onSuccess, onPaymentRec
           name="tenantId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-lg">Locataire *</FormLabel>
+              <FormLabel className="text-lg">Tenant *</FormLabel>
               <Select
                 onValueChange={(value) => {
                   field.onChange(value);
@@ -210,7 +210,7 @@ export function RecordPaymentForm({ preselectedTenantId, onSuccess, onPaymentRec
               >
                 <FormControl>
                   <SelectTrigger className="h-12 text-lg" data-testid="select-tenant" id="tenantId">
-                    <SelectValue placeholder="Sélectionner un locataire" />
+                    <SelectValue placeholder="Select a tenant" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -231,14 +231,14 @@ export function RecordPaymentForm({ preselectedTenantId, onSuccess, onPaymentRec
           name="receivedBy"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-lg">Reçu par / Received by *</FormLabel>
+              <FormLabel className="text-lg">Received by *</FormLabel>
               <Select
                 onValueChange={field.onChange}
                 value={field.value}
               >
                 <FormControl>
                   <SelectTrigger className="h-12 text-lg" data-testid="select-received-by">
-                    <SelectValue placeholder="Sélectionner qui a reçu le paiement" />
+                    <SelectValue placeholder="Select who received the payment" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -260,13 +260,13 @@ export function RecordPaymentForm({ preselectedTenantId, onSuccess, onPaymentRec
                 <AlertCircle className="w-7 h-7 text-red-500 flex-shrink-0 mt-1" />
                 <div className="flex-1">
                   <p className="text-lg font-semibold text-red-700 dark:text-red-400 mb-2">
-                    Arriérés de Paiement
+                    Payment Arrears
                   </p>
                   <p className="text-2xl font-bold text-red-600 dark:text-red-400 mb-1">
                     Rs {arrears.totalArrears.toLocaleString()}
                   </p>
                   <p className="text-base text-red-600/80 dark:text-red-400/80">
-                    {arrears.unpaidMonths.length} mois impayé{arrears.unpaidMonths.length > 1 ? 's' : ''}
+                    {arrears.unpaidMonths.length} unpaid month{arrears.unpaidMonths.length > 1 ? 's' : ''}
                   </p>
                 </div>
               </div>
@@ -274,7 +274,7 @@ export function RecordPaymentForm({ preselectedTenantId, onSuccess, onPaymentRec
               {/* Unpaid Months List */}
               <div className="space-y-2">
                 <p className="text-base font-medium text-red-700 dark:text-red-400 mb-3">
-                  Mois Impayés:
+                  Unpaid Months:
                 </p>
                 <div className="max-h-48 overflow-y-auto space-y-2">
                   {arrears.unpaidMonths.map((month, index) => (
@@ -291,13 +291,13 @@ export function RecordPaymentForm({ preselectedTenantId, onSuccess, onPaymentRec
                           {month.monthYear}
                           {index === 0 && (
                             <span className="ml-2 text-sm text-amber-700 dark:text-amber-400">
-                              (Auto-sélectionné)
+                              (Auto-selected)
                             </span>
                           )}
                         </p>
                         {month.partiallyPaid && (
                           <p className="text-sm text-muted-foreground">
-                            Déjà payé: Rs {month.amountPaid.toLocaleString()}
+                            Already paid: Rs {month.amountPaid.toLocaleString()}
                           </p>
                         )}
                       </div>
@@ -306,7 +306,7 @@ export function RecordPaymentForm({ preselectedTenantId, onSuccess, onPaymentRec
                           Rs {month.balance.toLocaleString()}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          dû
+                          due
                         </p>
                       </div>
                     </div>
@@ -325,10 +325,10 @@ export function RecordPaymentForm({ preselectedTenantId, onSuccess, onPaymentRec
                 <CheckCircle2 className="w-7 h-7 text-green-500 flex-shrink-0 mt-1" />
                 <div>
                   <p className="text-lg font-semibold text-green-700 dark:text-green-400 mb-1">
-                    Tous les Paiements à Jour
+                    All Payments Up To Date
                   </p>
                   <p className="text-base text-green-600/80 dark:text-green-400/80">
-                    Aucun arriéré pour ce locataire.
+                    No arrears for this tenant.
                   </p>
                 </div>
               </div>
@@ -346,7 +346,7 @@ export function RecordPaymentForm({ preselectedTenantId, onSuccess, onPaymentRec
               
               return (
                 <FormItem className="flex flex-col">
-                  <FormLabel className="text-lg">Date de Paiement *</FormLabel>
+                  <FormLabel className="text-lg">Payment Date *</FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
@@ -356,7 +356,7 @@ export function RecordPaymentForm({ preselectedTenantId, onSuccess, onPaymentRec
                           data-testid="button-payment-date"
                         >
                           <CalendarIcon className="mr-2 h-5 w-5" />
-                          {dateValue ? format(dateValue, "PPP") : <span>Sélectionner une date</span>}
+                          {dateValue ? format(dateValue, "PPP") : <span>Select a date</span>}
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
@@ -387,7 +387,7 @@ export function RecordPaymentForm({ preselectedTenantId, onSuccess, onPaymentRec
             name="monthYear"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-lg">Mois/Année *</FormLabel>
+                <FormLabel className="text-lg">Month/Year *</FormLabel>
                 <FormControl>
                   <Input
                     {...field}
@@ -404,7 +404,7 @@ export function RecordPaymentForm({ preselectedTenantId, onSuccess, onPaymentRec
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-foreground">Montants Dus</h3>
+          <h3 className="text-lg font-semibold text-foreground">Amounts Due</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
@@ -412,7 +412,7 @@ export function RecordPaymentForm({ preselectedTenantId, onSuccess, onPaymentRec
               name="rentAmount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-lg">Loyer (Rs) *</FormLabel>
+                  <FormLabel className="text-lg">Rent (Rs) *</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
@@ -433,7 +433,7 @@ export function RecordPaymentForm({ preselectedTenantId, onSuccess, onPaymentRec
               name="utilitiesAmount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-lg">Charges (Rs)</FormLabel>
+                  <FormLabel className="text-lg">Utilities (Rs)</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
@@ -452,7 +452,7 @@ export function RecordPaymentForm({ preselectedTenantId, onSuccess, onPaymentRec
 
           <div className="bg-accent/10 p-4 rounded-lg">
             <p className="text-lg text-muted-foreground">
-              Total Dû: <span className="font-bold text-foreground">Rs {totalAmountDue.toFixed(2)}</span>
+              Total Due: <span className="font-bold text-foreground">Rs {totalAmountDue.toFixed(2)}</span>
             </p>
           </div>
         </div>
@@ -462,7 +462,7 @@ export function RecordPaymentForm({ preselectedTenantId, onSuccess, onPaymentRec
           name="paymentAmount"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-lg">Montant Payé (Rs) *</FormLabel>
+              <FormLabel className="text-lg">Amount Paid (Rs) *</FormLabel>
               <FormControl>
                 <Input
                   type="number"
@@ -474,7 +474,7 @@ export function RecordPaymentForm({ preselectedTenantId, onSuccess, onPaymentRec
                 />
               </FormControl>
               <p className="text-lg text-muted-foreground">
-                Montant réellement reçu du locataire
+                Amount actually received from the tenant
               </p>
               <FormMessage />
             </FormItem>
@@ -491,7 +491,7 @@ export function RecordPaymentForm({ preselectedTenantId, onSuccess, onPaymentRec
                 <Textarea
                   {...field}
                   className="text-lg resize-none"
-                  placeholder="Notes optionnelles"
+                  placeholder="Optional notes"
                   rows={3}
                   data-testid="textarea-notes"
                 />
@@ -503,23 +503,23 @@ export function RecordPaymentForm({ preselectedTenantId, onSuccess, onPaymentRec
 
         <Card className="bg-accent/10 rounded-lg">
           <CardContent className="p-6">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Résumé du Paiement</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-4">Payment Summary</h3>
             <div className="space-y-3">
               <div className="flex justify-between items-center text-lg">
-                <span className="text-muted-foreground">Total Dû:</span>
+                <span className="text-muted-foreground">Total Due:</span>
                 <span className="font-semibold text-foreground">Rs {totalAmountDue.toFixed(2)}</span>
               </div>
               <div className="flex justify-between items-center text-lg">
-                <span className="text-muted-foreground">Montant Reçu:</span>
+                <span className="text-muted-foreground">Amount Received:</span>
                 <span className="font-semibold text-primary">Rs {paymentAmount.toFixed(2)}</span>
               </div>
               <div className="flex justify-between items-center text-lg mt-2 pt-2 border-t">
-                <span className="text-muted-foreground">Montant au Bailleur:</span>
+                <span className="text-muted-foreground">Amount to Landlord:</span>
                 <span className="font-bold text-green-600">Rs {landlordAmount.toFixed(2)}</span>
               </div>
               {balance !== 0 && (
                 <div className="flex justify-between items-center text-lg pt-2 border-t">
-                  <span className="text-muted-foreground">Solde {balance > 0 ? "Dû" : "Crédit"}:</span>
+                  <span className="text-muted-foreground">Balance {balance > 0 ? "Due" : "Credit"}:</span>
                   <span className={`font-bold ${balance > 0 ? "text-destructive" : "text-green-600"}`}>
                     Rs {Math.abs(balance).toFixed(2)}
                   </span>
@@ -535,7 +535,7 @@ export function RecordPaymentForm({ preselectedTenantId, onSuccess, onPaymentRec
           disabled={recordPaymentMutation.isPending}
           data-testid="button-submit-payment"
         >
-          {recordPaymentMutation.isPending ? "Enregistrement..." : "Enregistrer le Paiement"}
+          {recordPaymentMutation.isPending ? "Recording..." : "Record Payment"}
         </Button>
       </form>
     </Form>
