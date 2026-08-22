@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -31,7 +32,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Edit, Trash2, Store } from "lucide-react";
+import { Plus, Edit, Archive, Store } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const storeFormSchema = z.object({
@@ -98,7 +99,7 @@ export default function StoresPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/stores"] });
       toast({
         title: "Success",
-        description: "Store deleted successfully",
+        description: "Store archived successfully",
       });
     },
   });
@@ -124,7 +125,7 @@ export default function StoresPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this store?")) {
+    if (confirm("Archive this store? The record will be kept for history.")) {
       deleteMutation.mutate(id);
     }
   };
@@ -186,9 +187,18 @@ export default function StoresPage() {
                   </h3>
                   <p className="text-lg text-muted-foreground">{store.floor}</p>
                 </div>
+                <Badge variant={store.occupancyStatus === "occupied" ? "default" : "outline"} className="capitalize">
+                  {store.occupancyStatus || "unknown"}
+                </Badge>
               </div>
 
               <div className="space-y-2 text-lg">
+                {store.currentTenantName && (
+                  <div>
+                    <span className="text-muted-foreground">Tenant: </span>
+                    {store.currentTenantName}
+                  </div>
+                )}
                 {store.size && (
                   <div>
                     <span className="text-muted-foreground">Size: </span>
@@ -209,10 +219,21 @@ export default function StoresPage() {
                   size="sm"
                   className="flex-1"
                   onClick={() => handleEdit(store)}
+                  disabled={store.isArchived}
                   data-testid={`button-edit-store-${store.id}`}
                 >
                   <Edit className="h-4 w-4 mr-1" />
                   Edit
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDelete(store.id)}
+                  disabled={store.isArchived || deleteMutation.isPending}
+                  data-testid={`button-archive-store-${store.id}`}
+                >
+                  <Archive className="h-4 w-4 mr-1" />
+                  Archive
                 </Button>
               </div>
             </Card>

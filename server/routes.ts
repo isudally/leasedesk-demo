@@ -1,8 +1,70 @@
-import type { Express } from "express";
+import fs from "node:fs/promises";
+import multer from "multer";
+import type { Express, NextFunction, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { ensureProductionAdminUser, requireAuth, setupAuth } from "./auth";
 import { insertLandlordSchema, insertStoreSchema, insertTenantSchema, insertPaymentSchema, insertDocumentSchema, insertSettingSchema, insertExpenseSchema } from "@shared/schema";
+import { documentPathFromStorageKey, safeDocumentSize, uploadTenantDocument, validateDocumentSignature } from "./document-files";
+
+const inactivePaymentStatuses = new Set(["corrected", "reversal"]);
+
+function commercialScopeNotAvailable(res: Response) {
+  return res.status(410).json({ error: "This legacy tax workflow is outside the LeaseDesk commercial scope." });
+}
+
+function activePayments<T extends { status?: string }>(payments: T[]) {
+  return payments.filter((payment) => !inactivePaymentStatuses.has(payment.status ?? "posted"));
+}
+
+function parseNonNegativeFinite(value: unknown, fieldName: string) {
+  const parsed = Number.parseFloat(String(value ?? "0"));
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new Error(`${fieldName} must be a finite non-negative amount.`);
+  }
+  return parsed;
+}
+
+function buildPaymentData(body: Record<string, unknown>, current?: Record<string, unknown>) {
+  const rentAmount = parseNonNegativeFinite(body.rentAmount ?? current?.rentAmount, "Rent amount");
+  const utilitiesAmount = parseNonNegativeFinite(body.utilitiesAmount ?? current?.utilitiesAmount, "Utilities amount");
+  const paymentAmount = parseNonNegativeFinite(body.paymentAmount ?? current?.paymentAmount, "Payment amount");
+  const totalAmountDue = rentAmount + utilitiesAmount;
+  const balance = totalAmountDue - paymentAmount;
+
+  return {
+    ...current,
+    ...body,
+    rentAmount: rentAmount.toString(),
+    utilitiesAmount: utilitiesAmount.toString(),
+    paymentAmount: paymentAmount.toString(),
+    totalAmountDue: totalAmountDue.toString(),
+    tdsAmount: "0",
+    landlordAmount: paymentAmount.toString(),
+    balance: balance.toString(),
+    tdsPaidToMRA: false,
+    status: "posted",
+    correctionOfPaymentId: null,
+  };
+}
+
+function runTenantDocumentUpload(req: Request, res: Response, next: NextFunction) {
+  uploadTenantDocument(req, res, async (error) => {
+    if (!error) {
+      return next();
+    }
+
+    if (req.file?.path) {
+      await fs.unlink(req.file.path).catch(() => undefined);
+    }
+
+    if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).json({ error: "Document must be 10MB or less." });
+    }
+
+    return res.status(400).json({ error: error.message || "Invalid document upload." });
+  });
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app, storage);
@@ -58,8 +120,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ====== STORES ROUTES ======
   app.get("/api/stores", async (req, res) => {
     try {
-      const stores = await storage.getStores();
-      res.json(stores);
+      const [stores, tenants] = await Promise.all([storage.getStores(), storage.getTenants()]);
+      const activeTenants = tenants.filter((tenant) => tenant.isActive);
+      const storesWithOccupancy = stores.map((store) => {
+        const currentTenant = activeTenants.find((tenant) => tenant.storeId === store.id);
+        return {
+          ...store,
+          occupancyStatus: store.isArchived ? "archived" : currentTenant ? "occupied" : "vacant",
+          currentTenantId: currentTenant?.id ?? null,
+          currentTenantName: currentTenant?.tenantName ?? null,
+          currentLeaseEnd: currentTenant?.leaseEnd ?? null,
+        };
+      });
+      res.json(storesWithOccupancy);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch stores" });
     }
@@ -98,7 +171,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.delete("/api/stores/:id", async (req, res) => {
-    res.status(403).json({ error: "Deletes are disabled in the LeaseDesk validation demo" });
+    try {
+      const tenants = await storage.getTenants();
+      const activeTenant = tenants.find((tenant) => tenant.isActive && tenant.storeId === req.params.id);
+      if (activeTenant) {
+        return res.status(409).json({ error: "This unit has an active tenant. Archive or reassign the tenant before archiving the unit." });
+      }
+      const store = await storage.archiveStore(req.params.id);
+      res.json(store);
+    } catch (error) {
+      res.status(404).json({ error: "Store not found" });
+    }
   });
 
   // ====== TENANTS ROUTES ======
@@ -114,11 +197,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get arrears summary for ALL tenants (must come before /:id routes)
   app.get("/api/tenants/arrears", async (req, res) => {
     try {
-      const tenants = await storage.getTenants();
+      const tenants = (await storage.getTenants()).filter((tenant) => tenant.isActive);
       const arrearsData = [];
 
       for (const tenant of tenants) {
-        const payments = await storage.getPayments(tenant.id);
+        const payments = activePayments(await storage.getPayments(tenant.id));
         
         const leaseStart = new Date(tenant.leaseStart);
         const leaseEnd = new Date(tenant.leaseEnd);
@@ -172,6 +255,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/tenants", async (req, res) => {
     try {
       const validatedData = insertTenantSchema.parse(req.body);
+      const landlord = await storage.getLandlord(validatedData.landlordId);
+      if (!landlord) {
+        return res.status(400).json({ error: "Landlord does not exist." });
+      }
+      if (validatedData.storeId) {
+        const store = await storage.getStore(validatedData.storeId);
+        if (!store || store.isArchived) {
+          return res.status(400).json({ error: "Store is not available for leasing." });
+        }
+      }
       const tenant = await storage.createTenant(validatedData);
       res.status(201).json(tenant);
     } catch (error: any) {
@@ -181,7 +274,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/tenants/:id", async (req, res) => {
     try {
-      const tenant = await storage.updateTenant(req.params.id, req.body);
+      const validatedData = req.body;
+      if (typeof validatedData.landlordId === "string") {
+        const landlord = await storage.getLandlord(validatedData.landlordId);
+        if (!landlord) {
+          return res.status(400).json({ error: "Landlord does not exist." });
+        }
+      }
+      if (typeof validatedData.storeId === "string") {
+        const store = await storage.getStore(validatedData.storeId);
+        if (!store || store.isArchived) {
+          return res.status(400).json({ error: "Store is not available for leasing." });
+        }
+      }
+      const tenant = await storage.updateTenant(req.params.id, validatedData);
       res.json(tenant);
     } catch (error) {
       res.status(400).json({ error: "Failed to update tenant" });
@@ -189,11 +295,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.delete("/api/tenants/:id", async (req, res) => {
-    res.status(403).json({ error: "Deletes are disabled in the LeaseDesk validation demo" });
+    try {
+      const tenant = await storage.archiveTenant(req.params.id);
+      res.json(tenant);
+    } catch (error) {
+      res.status(404).json({ error: "Tenant not found" });
+    }
   });
 
   app.patch("/api/tenants/:id/archive", async (req, res) => {
-    res.status(403).json({ error: "Archiving is disabled in the LeaseDesk validation demo" });
+    try {
+      const tenant = await storage.archiveTenant(req.params.id);
+      res.json(tenant);
+    } catch (error) {
+      res.status(404).json({ error: "Tenant not found" });
+    }
   });
 
   app.get("/api/tenants/expiring/:months", async (req, res) => {
@@ -231,37 +347,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/payments", async (req, res) => {
     try {
-      // Payment logic:
-      // Tenant owes: rent + utilities = totalAmountDue
-      // Tenant pays: paymentAmount (may be full or partial)
-      // Payment is allocated to rent first, then utilities
-      // TDS: 7.5% of rent ACTUALLY PAID - tracked for tax reporting only, NOT deducted
-      // Landlord receives: FULL paymentAmount (TDS tracked separately for tax declaration)
-      // Balance: totalDue - payment (if partial payment)
-      
-      const rentAmount = parseFloat(req.body.rentAmount || "0");
-      const utilitiesAmount = parseFloat(req.body.utilitiesAmount || "0");
-      const totalAmountDue = rentAmount + utilitiesAmount;
-      const paymentAmount = parseFloat(req.body.paymentAmount || "0");
-      
-      // Calculate how much of the payment goes to rent vs utilities
-      // Payment is allocated to rent first, then utilities
-      const rentPaid = Math.min(paymentAmount, rentAmount);
-      
-      // TDS is 7.5% of rent ACTUALLY PAID (for tax reporting only)
-      const tdsAmount = Math.round(rentPaid * 0.075 * 100) / 100;
-      // Landlord receives FULL payment - TDS is tracked separately for tax declaration
-      const landlordAmount = paymentAmount;
-      const balance = totalAmountDue - paymentAmount;
-
-      const paymentData = {
-        ...req.body,
-        totalAmountDue: totalAmountDue.toString(),
-        tdsAmount: tdsAmount.toString(),
-        landlordAmount: landlordAmount.toString(),
-        balance: balance.toString(),
-      };
-
+      const tenant = await storage.getTenant(req.body.tenantId);
+      if (!tenant || !tenant.isActive) {
+        return res.status(400).json({ error: "Payment tenant must be an active tenant." });
+      }
+      const paymentData = buildPaymentData(req.body);
       const validatedData = insertPaymentSchema.parse(paymentData);
       const payment = await storage.createPayment(validatedData);
       res.status(201).json(payment);
@@ -271,49 +361,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.patch("/api/payments/:id", async (req, res) => {
+    res.status(409).json({ error: "Payment records are immutable. Use the correction endpoint to preserve audit history." });
+  });
+
+  app.post("/api/payments/:id/corrections", async (req, res) => {
     try {
-      // Get current payment to merge with updates
       const current = await storage.getPayment(req.params.id);
       if (!current) {
         return res.status(404).json({ error: "Payment not found" });
       }
-
-      let updateData = { ...req.body };
-      
-      // Remove any client-provided calculated fields to prevent override
-      delete updateData.tdsAmount;
-      delete updateData.totalAmountDue;
-      delete updateData.landlordAmount;
-      delete updateData.balance;
-      
-      // Always recalculate when updating any monetary fields
-      // Use updated values if provided, otherwise use current values
-      const rentAmount = req.body.rentAmount !== undefined 
-        ? parseFloat(String(req.body.rentAmount))
-        : parseFloat(String(current.rentAmount || "0"));
-      const utilitiesAmount = req.body.utilitiesAmount !== undefined 
-        ? parseFloat(String(req.body.utilitiesAmount))
-        : parseFloat(String(current.utilitiesAmount || "0"));
-      const paymentAmount = req.body.paymentAmount !== undefined 
-        ? parseFloat(String(req.body.paymentAmount))
-        : parseFloat(String(current.paymentAmount || "0"));
-      
-      const totalAmountDue = rentAmount + utilitiesAmount;
-      const rentPaid = Math.min(paymentAmount, rentAmount);
-      const tdsAmount = Math.round(rentPaid * 0.075 * 100) / 100; // 7.5% TDS on rent actually paid (for tax reporting only)
-      const landlordAmount = paymentAmount; // Landlord receives FULL payment - TDS tracked separately for tax declaration
-      const balance = totalAmountDue - paymentAmount;
-      
-      updateData.tdsAmount = tdsAmount.toString();
-      updateData.totalAmountDue = totalAmountDue.toString();
-      updateData.landlordAmount = landlordAmount.toString();
-      updateData.balance = balance.toString();
-
-      const validatedData = insertPaymentSchema.partial().parse(updateData);
-      const payment = await storage.updatePayment(req.params.id, validatedData);
-      res.json(payment);
-    } catch (error) {
-      res.status(400).json({ error: "Failed to update payment" });
+      if (current.status === "corrected") {
+        return res.status(409).json({ error: "Payment has already been corrected." });
+      }
+      const paymentData = {
+        ...buildPaymentData(req.body, current as unknown as Record<string, unknown>),
+        tenantId: current.tenantId,
+      };
+      const validatedData = insertPaymentSchema.parse(paymentData);
+      const result = await storage.correctPayment(req.params.id, validatedData);
+      res.status(201).json(result);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || "Failed to correct payment" });
     }
   });
 
@@ -327,12 +395,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/payments/tds/unpaid", async (req, res) => {
-    try {
-      const payments = await storage.getUnpaidTDS();
-      res.json(payments);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch unpaid TDS" });
-    }
+    return commercialScopeNotAvailable(res);
   });
 
   // Get arrears (unpaid months) for a tenant
@@ -344,7 +407,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get all payments for this tenant
-      const payments = await storage.getPayments(tenant.id);
+      const payments = activePayments(await storage.getPayments(tenant.id));
       
       // Calculate all months between lease start and today (or lease end if expired)
       const leaseStart = new Date(tenant.leaseStart);
@@ -421,10 +484,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ====== DOCUMENTS ROUTES ======
   app.get("/api/documents/tenant/:tenantId", async (req, res) => {
     try {
+      const tenant = await storage.getTenant(req.params.tenantId);
+      if (!tenant) {
+        return res.status(404).json({ error: "Tenant not found" });
+      }
       const documents = await storage.getDocuments(req.params.tenantId);
-      res.json(documents);
+      const includeArchived = req.query.includeArchived === "true";
+      res.json(includeArchived ? documents : documents.filter((document) => !document.isArchived));
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch documents" });
+    }
+  });
+
+  app.get("/api/documents/:id/download", async (req, res) => {
+    try {
+      const document = await storage.getDocument(req.params.id);
+      if (!document || document.isArchived || !document.storageKey) {
+        return res.status(404).json({ error: "Document file not found" });
+      }
+
+      const filePath = documentPathFromStorageKey(document.storageKey);
+      res.download(filePath, document.fileName, (error) => {
+        if (error && !res.headersSent) {
+          res.status(404).json({ error: "Document file not found" });
+        }
+      });
+    } catch (error) {
+      res.status(404).json({ error: "Document file not found" });
     }
   });
 
@@ -442,6 +528,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/documents", async (req, res) => {
     try {
+      const tenant = await storage.getTenant(req.body.tenantId);
+      if (!tenant) {
+        return res.status(400).json({ error: "Document tenant does not exist." });
+      }
       const validatedData = insertDocumentSchema.parse(req.body);
       const document = await storage.createDocument(validatedData);
       res.status(201).json(document);
@@ -450,8 +540,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/documents/tenant/:tenantId/upload", runTenantDocumentUpload, async (req, res) => {
+    try {
+      const tenant = await storage.getTenant(req.params.tenantId);
+      if (!tenant) {
+        if (req.file?.path) {
+          await fs.unlink(req.file.path).catch(() => undefined);
+        }
+        return res.status(404).json({ error: "Tenant not found" });
+      }
+      if (!req.file) {
+        return res.status(400).json({ error: "Document file is required." });
+      }
+
+      const signatureMatches = await validateDocumentSignature(req.file.path, req.file.mimetype);
+      if (!signatureMatches) {
+        await fs.unlink(req.file.path).catch(() => undefined);
+        return res.status(400).json({ error: "Document content does not match a supported PDF, JPG or PNG file." });
+      }
+
+      const documentData = {
+        tenantId: tenant.id,
+        documentName: String(req.body.documentName || req.file.originalname),
+        documentType: String(req.body.documentType || "other"),
+        fileUrl: "#local-document-storage",
+        fileName: req.file.originalname,
+        fileSize: safeDocumentSize(req.file.size),
+        mimeType: req.file.mimetype,
+        storageKey: req.file.filename,
+        notes: req.body.notes ? String(req.body.notes) : null,
+      };
+
+      const validatedData = insertDocumentSchema.parse(documentData);
+      const document = await storage.createDocument(validatedData);
+      res.status(201).json(document);
+    } catch (error: any) {
+      if (req.file?.path) {
+        await fs.unlink(req.file.path).catch(() => undefined);
+      }
+      res.status(400).json({ error: error.message || "Invalid document data" });
+    }
+  });
+
   app.delete("/api/documents/:id", async (req, res) => {
-    res.status(403).json({ error: "Deletes are disabled in the LeaseDesk validation demo" });
+    try {
+      const document = await storage.archiveDocument(req.params.id);
+      res.json(document);
+    } catch (error) {
+      res.status(404).json({ error: "Document not found" });
+    }
   });
 
   // ====== SETTINGS ROUTES ======
@@ -481,7 +618,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/expenses", async (req, res) => {
     try {
       const expenses = await storage.getExpenses();
-      res.json(expenses);
+      const includeArchived = req.query.includeArchived === "true";
+      res.json(includeArchived ? expenses : expenses.filter((expense) => !expense.isArchived));
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch expenses" });
     }
@@ -501,6 +639,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/expenses", async (req, res) => {
     try {
+      if (req.body.storeId) {
+        const store = await storage.getStore(req.body.storeId);
+        if (!store || store.isArchived) {
+          return res.status(400).json({ error: "Expense store is not available." });
+        }
+      }
       const validatedData = insertExpenseSchema.parse(req.body);
       const expense = await storage.createExpense(validatedData);
       res.status(201).json(expense);
@@ -515,6 +659,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!existing) {
         return res.status(404).json({ error: "Expense not found" });
       }
+      if (req.body.storeId) {
+        const store = await storage.getStore(req.body.storeId);
+        if (!store || store.isArchived) {
+          return res.status(400).json({ error: "Expense store is not available." });
+        }
+      }
       const expense = await storage.updateExpense(req.params.id, req.body);
       res.json(expense);
     } catch (error: any) {
@@ -523,54 +673,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.delete("/api/expenses/:id", async (req, res) => {
-    res.status(403).json({ error: "Deletes are disabled in the LeaseDesk validation demo" });
+    try {
+      const expense = await storage.archiveExpense(req.params.id);
+      res.json(expense);
+    } catch (error) {
+      res.status(404).json({ error: "Expense not found" });
+    }
   });
 
   // ====== TAX REPORTS ROUTES ======
   app.get("/api/reports/tax/summary/:year", async (req, res) => {
-    try {
-      const year = req.params.year;
-      const payments = await storage.getPayments();
-      
-      // Filter payments for the year and calculate totals
-      const yearPayments = payments.filter(p => {
-        const paymentYear = p.paymentDate.split('-')[0];
-        return paymentYear === year;
-      });
-
-      const summary = {
-        year,
-        totalRentCollected: yearPayments.reduce((sum, p) => sum + parseFloat(p.rentAmount.toString()), 0),
-        totalTDSDeducted: yearPayments.reduce((sum, p) => sum + parseFloat(p.tdsAmount?.toString() || "0"), 0),
-        totalLandlordAmount: yearPayments.reduce((sum, p) => sum + parseFloat(p.landlordAmount.toString()), 0),
-        paymentsCount: yearPayments.length,
-      };
-
-      res.json(summary);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to generate tax summary" });
-    }
+    return commercialScopeNotAvailable(res);
   });
 
   app.get("/api/reports/tax/monthly/:monthYear", async (req, res) => {
-    try {
-      const monthYear = req.params.monthYear;
-      const payments = await storage.getPaymentsByMonth(monthYear);
-      
-      const summary = {
-        monthYear,
-        totalRent: payments.reduce((sum, p) => sum + parseFloat(p.rentAmount.toString()), 0),
-        totalTDS: payments.reduce((sum, p) => sum + parseFloat(p.tdsAmount?.toString() || "0"), 0),
-        totalLandlordAmount: payments.reduce((sum, p) => sum + parseFloat(p.landlordAmount.toString()), 0),
-        tdsPaidCount: payments.filter(p => p.tdsPaidToMRA).length,
-        tdsPendingCount: payments.filter(p => !p.tdsPaidToMRA).length,
-        payments: payments,
-      };
-
-      res.json(summary);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to generate monthly report" });
-    }
+    return commercialScopeNotAvailable(res);
   });
 
   // ====== BULK UPLOAD ROUTES ======

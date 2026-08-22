@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import type { Tenant, Landlord, Store, Payment, Document } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Building2, Calendar, User, Phone, Mail, FileText, MapPin, CreditCard, AlertCircle, CheckCircle, Trash2, Archive } from "lucide-react";
+import { ArrowLeft, Building2, Calendar, User, Phone, Mail, FileText, MapPin, CreditCard, AlertCircle, CheckCircle, Trash2, Archive, Download, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -21,6 +21,8 @@ export default function TenantDetails() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [paidMonthIndexes, setPaidMonthIndexes] = useState<Set<number>>(new Set());
+  const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const [documentType, setDocumentType] = useState("lease");
   const { toast } = useToast();
 
   const { data: tenant, isLoading: tenantLoading } = useQuery<Tenant>({
@@ -88,15 +90,15 @@ export default function TenantDetails() {
     enabled: !!id,
   });
 
-  // Delete tenant mutation
+  // The legacy delete action now performs a safe archive on the server.
   const deleteTenantMutation = useMutation({
     mutationFn: async () => {
       return await apiRequest("DELETE", `/api/tenants/${id}`);
     },
     onSuccess: () => {
       toast({
-        title: "Locataire supprimé",
-        description: "Le locataire a été supprimé avec succès.",
+        title: "Locataire archivé",
+        description: "Le locataire a été archivé avec succès.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/tenants"] });
       navigate("/");
@@ -104,7 +106,7 @@ export default function TenantDetails() {
     onError: (error: Error) => {
       toast({
         title: "Erreur",
-        description: error.message || "Échec de la suppression du locataire.",
+        description: error.message || "Échec de l'archivage du locataire.",
         variant: "destructive",
       });
     },
@@ -128,6 +130,65 @@ export default function TenantDetails() {
       toast({
         title: "Erreur",
         description: error.message || "Échec de l'archivage du locataire.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const uploadDocumentMutation = useMutation({
+    mutationFn: async () => {
+      if (!documentFile || !id) {
+        throw new Error("Select a document before uploading.");
+      }
+
+      const formData = new FormData();
+      formData.append("documentType", documentType);
+      formData.append("documentName", documentFile.name);
+      formData.append("file", documentFile);
+
+      const response = await fetch(`/api/documents/tenant/${id}/upload`, {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: "Failed to upload document." }));
+        throw new Error(error.error || "Failed to upload document.");
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      setDocumentFile(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/documents/tenant", id] });
+      toast({
+        title: "Document uploaded",
+        description: "The tenant document has been stored safely.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const archiveDocumentMutation = useMutation({
+    mutationFn: async (documentId: string) => apiRequest("DELETE", `/api/documents/${documentId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/documents/tenant", id] });
+      toast({
+        title: "Document archived",
+        description: "The document was hidden from the active tenant file.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Archive failed",
+        description: error.message,
         variant: "destructive",
       });
     },
@@ -532,6 +593,54 @@ export default function TenantDetails() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6 pt-0">
+            <div className="mb-6 rounded-lg border bg-muted/30 p-4">
+              <div className="grid gap-3 md:grid-cols-[160px_1fr_auto] md:items-end">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground" htmlFor="document-type">
+                    Type
+                  </label>
+                  <select
+                    id="document-type"
+                    className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
+                    value={documentType}
+                    onChange={(event) => setDocumentType(event.target.value)}
+                    data-testid="select-document-type"
+                  >
+                    <option value="lease">Lease</option>
+                    <option value="trade_permit">Trade permit</option>
+                    <option value="id_card">ID card</option>
+                    <option value="proof_of_address">Proof of address</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground" htmlFor="tenant-document">
+                    Document
+                  </label>
+                  <input
+                    id="tenant-document"
+                    className="mt-1 block w-full rounded-md border bg-background px-3 py-2 text-sm"
+                    type="file"
+                    accept="application/pdf,image/jpeg,image/png"
+                    onChange={(event) => setDocumentFile(event.target.files?.[0] ?? null)}
+                    data-testid="input-tenant-document"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  onClick={() => uploadDocumentMutation.mutate()}
+                  disabled={!documentFile || uploadDocumentMutation.isPending}
+                  data-testid="button-upload-tenant-document"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  {uploadDocumentMutation.isPending ? "Uploading..." : "Upload"}
+                </Button>
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                PDF, JPG and PNG only. Maximum file size is 10MB.
+              </p>
+            </div>
+
             {documents.length > 0 ? (
               <div className="space-y-3">
                 {documents.map((document) => (
@@ -546,9 +655,34 @@ export default function TenantDetails() {
                         {document.fileName} - {document.fileSize || "Demo metadata"}
                       </p>
                     </div>
-                    <Badge variant="outline" className="capitalize">
-                      {document.documentType.replace("_", " ")}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="capitalize">
+                        {document.documentType.replace("_", " ")}
+                      </Badge>
+                      {document.storageKey && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(`/api/documents/${document.id}/download`, "_blank", "noopener,noreferrer")}
+                          data-testid={`button-download-document-${document.id}`}
+                        >
+                          <Download className="mr-2 h-4 w-4" />
+                          Download
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => archiveDocumentMutation.mutate(document.id)}
+                        disabled={archiveDocumentMutation.isPending}
+                        data-testid={`button-archive-document-${document.id}`}
+                      >
+                        <Archive className="mr-2 h-4 w-4" />
+                        Archive
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -640,9 +774,9 @@ export default function TenantDetails() {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Supprimer le locataire</DialogTitle>
+            <DialogTitle>Archiver le locataire</DialogTitle>
             <DialogDescription>
-              ⚠️ Attention: Cette action est irréversible. Êtes-vous sûr de vouloir supprimer définitivement {tenant.tenantName}? Toutes les données associées (paiements, contrats, etc.) seront perdues.
+              Cette action conserve l'historique du locataire et masque le dossier des vues actives.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
@@ -654,12 +788,12 @@ export default function TenantDetails() {
               Annuler
             </Button>
             <Button
-              variant="destructive"
+              variant="default"
               onClick={() => deleteTenantMutation.mutate()}
               disabled={deleteTenantMutation.isPending}
               data-testid="button-confirm-delete"
             >
-              {deleteTenantMutation.isPending ? "Suppression..." : "Supprimer définitivement"}
+              {deleteTenantMutation.isPending ? "Archivage..." : "Archiver"}
             </Button>
           </DialogFooter>
         </DialogContent>

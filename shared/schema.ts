@@ -49,11 +49,14 @@ export const stores = pgTable("stores", {
   floor: text("floor").notNull(), // Ground Floor, First Floor, etc.
   size: text("size"), // optional: square meters
   features: text("features"), // optional: description
+  isArchived: boolean("is_archived").default(false).notNull(),
+  archivedAt: timestamp("archived_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const insertStoreSchema = createInsertSchema(stores).omit({
   id: true,
+  archivedAt: true,
   createdAt: true,
 });
 
@@ -86,6 +89,7 @@ export const tenants = pgTable("tenants", {
   notes: text("notes"),
   renewalDecision: text("renewal_decision"), // pending, renew, not_renew
   isActive: boolean("is_active").default(true).notNull(),
+  archivedAt: timestamp("archived_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -143,6 +147,8 @@ export const payments = pgTable("payments", {
   landlordSigned: boolean("landlord_signed").default(false),
   tenantSigned: boolean("tenant_signed").default(false),
   receiptNumber: text("receipt_number").notNull(),
+  status: text("status").default("posted").notNull(), // posted, corrected, reversal
+  correctionOfPaymentId: varchar("correction_of_payment_id"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -205,6 +211,10 @@ export const documents = pgTable("documents", {
   fileUrl: text("file_url").notNull(), // Object storage path
   fileName: text("file_name").notNull(), // Original filename
   fileSize: text("file_size"), // File size in bytes
+  mimeType: text("mime_type"),
+  storageKey: text("storage_key"),
+  isArchived: boolean("is_archived").default(false).notNull(),
+  archivedAt: timestamp("archived_at"),
   notes: text("notes"), // Optional notes about the document
   uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
 });
@@ -218,6 +228,7 @@ export const documentsRelations = relations(documents, ({ one }) => ({
 
 export const insertDocumentSchema = createInsertSchema(documents).omit({
   id: true,
+  archivedAt: true,
   uploadedAt: true,
 });
 
@@ -252,6 +263,8 @@ export const expenses = pgTable("expenses", {
   expenseType: text("expense_type").notNull(), // "store-specific" or "building-wide"
   storeId: varchar("store_id").references(() => stores.id), // null if building-wide
   splitMethod: text("split_method"), // "equal", "by_rent", "n/a", null if store-specific
+  isArchived: boolean("is_archived").default(false).notNull(),
+  archivedAt: timestamp("archived_at"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -265,6 +278,7 @@ export const expensesRelations = relations(expenses, ({ one }) => ({
 
 export const insertExpenseSchema = createInsertSchema(expenses).omit({
   id: true,
+  archivedAt: true,
   createdAt: true,
 }).refine(
   (data) => {
