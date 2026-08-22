@@ -5,7 +5,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { ensureProductionAdminUser, requireAuth, setupAuth } from "./auth";
 import { insertLandlordSchema, insertStoreSchema, insertTenantSchema, insertPaymentSchema, insertDocumentSchema, insertSettingSchema, insertExpenseSchema } from "@shared/schema";
-import { documentPathFromStorageKey, safeDocumentSize, uploadTenantDocument } from "./document-files";
+import { documentPathFromStorageKey, safeDocumentSize, uploadTenantDocument, validateDocumentSignature } from "./document-files";
 
 const inactivePaymentStatuses = new Set(["corrected", "reversal"]);
 
@@ -17,10 +17,18 @@ function activePayments<T extends { status?: string }>(payments: T[]) {
   return payments.filter((payment) => !inactivePaymentStatuses.has(payment.status ?? "posted"));
 }
 
+function parseNonNegativeFinite(value: unknown, fieldName: string) {
+  const parsed = Number.parseFloat(String(value ?? "0"));
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new Error(`${fieldName} must be a finite non-negative amount.`);
+  }
+  return parsed;
+}
+
 function buildPaymentData(body: Record<string, unknown>, current?: Record<string, unknown>) {
-  const rentAmount = Number.parseFloat(String(body.rentAmount ?? current?.rentAmount ?? "0"));
-  const utilitiesAmount = Number.parseFloat(String(body.utilitiesAmount ?? current?.utilitiesAmount ?? "0"));
-  const paymentAmount = Number.parseFloat(String(body.paymentAmount ?? current?.paymentAmount ?? "0"));
+  const rentAmount = parseNonNegativeFinite(body.rentAmount ?? current?.rentAmount, "Rent amount");
+  const utilitiesAmount = parseNonNegativeFinite(body.utilitiesAmount ?? current?.utilitiesAmount, "Utilities amount");
+  const paymentAmount = parseNonNegativeFinite(body.paymentAmount ?? current?.paymentAmount, "Payment amount");
   const totalAmountDue = rentAmount + utilitiesAmount;
   const balance = totalAmountDue - paymentAmount;
 
@@ -164,6 +172,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/stores/:id", async (req, res) => {
     try {
+      const tenants = await storage.getTenants();
+      const activeTenant = tenants.find((tenant) => tenant.isActive && tenant.storeId === req.params.id);
+      if (activeTenant) {
+        return res.status(409).json({ error: "This unit has an active tenant. Archive or reassign the tenant before archiving the unit." });
+      }
       const store = await storage.archiveStore(req.params.id);
       res.json(store);
     } catch (error) {
@@ -184,7 +197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get arrears summary for ALL tenants (must come before /:id routes)
   app.get("/api/tenants/arrears", async (req, res) => {
     try {
-      const tenants = await storage.getTenants();
+      const tenants = (await storage.getTenants()).filter((tenant) => tenant.isActive);
       const arrearsData = [];
 
       for (const tenant of tenants) {
@@ -538,6 +551,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       if (!req.file) {
         return res.status(400).json({ error: "Document file is required." });
+      }
+
+      const signatureMatches = await validateDocumentSignature(req.file.path, req.file.mimetype);
+      if (!signatureMatches) {
+        await fs.unlink(req.file.path).catch(() => undefined);
+        return res.status(400).json({ error: "Document content does not match a supported PDF, JPG or PNG file." });
       }
 
       const documentData = {

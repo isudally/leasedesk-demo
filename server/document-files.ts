@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
+import fsp from "node:fs/promises";
 import path from "node:path";
 import multer from "multer";
 import type { Request } from "express";
@@ -42,6 +43,31 @@ export function documentPathFromStorageKey(storageKey: string) {
     throw new Error("Invalid document reference.");
   }
   return resolved;
+}
+
+export async function validateDocumentSignature(filePath: string, claimedMimeType: string) {
+  const handle = await fsp.open(filePath, "r");
+  try {
+    const buffer = Buffer.alloc(8);
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+    const header = buffer.subarray(0, bytesRead);
+
+    if (claimedMimeType === "application/pdf") {
+      return header.subarray(0, 4).toString("ascii") === "%PDF";
+    }
+
+    if (claimedMimeType === "image/jpeg") {
+      return header.length >= 3 && header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff;
+    }
+
+    if (claimedMimeType === "image/png") {
+      return header.equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    }
+
+    return false;
+  } finally {
+    await handle.close();
+  }
 }
 
 export function safeDocumentSize(bytes: number) {

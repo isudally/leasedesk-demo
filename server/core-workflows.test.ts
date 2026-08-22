@@ -24,6 +24,12 @@ test("core commercial workflows use safe lifecycle, corrections, and document st
     assert.equal(unitOne?.currentTenantName, "Bloom Coffee Ltd");
     assert.equal(vacantUnit?.occupancyStatus, "vacant");
 
+    const occupiedArchive = await fetch(`${baseUrl}/api/stores/st-001`, {
+      method: "DELETE",
+      headers: { cookie },
+    });
+    assert.equal(occupiedArchive.status, 409);
+
     const invalidTenant = await fetch(`${baseUrl}/api/tenants`, {
       method: "POST",
       headers: jsonHeaders(cookie),
@@ -44,12 +50,39 @@ test("core commercial workflows use safe lifecycle, corrections, and document st
     const payments = await requestJson<any[]>(baseUrl, "/api/payments?tenantId=tn-001", { cookie });
     const originalPayment = payments[0];
 
+    const invalidPayment = await fetch(`${baseUrl}/api/payments`, {
+      method: "POST",
+      headers: jsonHeaders(cookie),
+      body: JSON.stringify({
+        tenantId: "tn-001",
+        receivedBy: "LeaseDesk Test",
+        paymentDate: "2026-08-20",
+        monthYear: "August 2026",
+        rentAmount: "-100",
+        utilitiesAmount: "0",
+        paymentAmount: "100",
+        receiptNumber: "LD-INVALID-001",
+      }),
+    });
+    assert.equal(invalidPayment.status, 400);
+
     const overwriteAttempt = await fetch(`${baseUrl}/api/payments/${originalPayment.id}`, {
       method: "PATCH",
       headers: jsonHeaders(cookie),
       body: JSON.stringify({ notes: "unsafe overwrite" }),
     });
     assert.equal(overwriteAttempt.status, 409);
+
+    const invalidCorrection = await fetch(`${baseUrl}/api/payments/${originalPayment.id}/corrections`, {
+      method: "POST",
+      headers: jsonHeaders(cookie),
+      body: JSON.stringify({
+        paymentAmount: "Infinity",
+        receivedBy: "LeaseDesk Test",
+        receiptNumber: "LD-CORR-BAD",
+      }),
+    });
+    assert.equal(invalidCorrection.status, 400);
 
     const correction = await requestJson<any>(baseUrl, `/api/payments/${originalPayment.id}/corrections`, {
       cookie,
@@ -72,6 +105,9 @@ test("core commercial workflows use safe lifecycle, corrections, and document st
     });
     assert.equal(archivedTenant.isActive, false);
     assert.ok(archivedTenant.archivedAt);
+
+    const arrearsAfterArchive = await requestJson<any[]>(baseUrl, "/api/tenants/arrears", { cookie });
+    assert.equal(arrearsAfterArchive.some((tenant) => tenant.tenantId === "tn-011"), false);
 
     const expense = await requestJson<any>(baseUrl, "/api/expenses", {
       cookie,
@@ -126,6 +162,16 @@ test("core commercial workflows use safe lifecycle, corrections, and document st
       body: invalidUploadForm,
     });
     assert.equal(invalidUpload.status, 400);
+
+    const spoofedUploadForm = new FormData();
+    spoofedUploadForm.set("documentType", "lease");
+    spoofedUploadForm.set("file", new Blob(["not really a pdf"], { type: "application/pdf" }), "spoofed.pdf");
+    const spoofedUpload = await fetch(`${baseUrl}/api/documents/tenant/tn-001/upload`, {
+      method: "POST",
+      headers: { cookie },
+      body: spoofedUploadForm,
+    });
+    assert.equal(spoofedUpload.status, 400);
 
     const archivedDocument = await requestJson<any>(baseUrl, `/api/documents/${uploadedDocument.id}`, {
       cookie,
