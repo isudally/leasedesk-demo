@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { ContractGenerator } from "@/components/contract-generator";
 import { PaymentHistory } from "@/components/payment-history";
 import { ReceiptGenerator } from "@/components/receipt-generator";
+import { RecordPaymentForm } from "@/components/record-payment-form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -20,7 +21,11 @@ export default function TenantDetails() {
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
-  const [paidMonthIndexes, setPaidMonthIndexes] = useState<Set<number>>(new Set());
+  const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
+  const [recordPaymentContext, setRecordPaymentContext] = useState<{
+    monthYear: string;
+    outstandingBalance: number;
+  } | null>(null);
   const [documentFile, setDocumentFile] = useState<File | null>(null);
   const [documentType, setDocumentType] = useState("lease");
   const { toast } = useToast();
@@ -200,11 +205,11 @@ export default function TenantDetails() {
     const daysUntilExpiry = Math.floor((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     
     if (daysUntilExpiry < 0) {
-      return { status: "expiré", color: "hsl(0 84% 60%)" };
+      return { status: "Expired", color: "hsl(0 84% 60%)" };
     } else if (daysUntilExpiry <= 120) {
-      return { status: "expire bientôt", color: "hsl(45 93% 47%)" };
+      return { status: "Expiring", color: "hsl(45 93% 47%)" };
     } else {
-      return { status: "actif", color: "hsl(142 71% 45%)" };
+      return { status: "Current Lease", color: "hsl(142 71% 45%)" };
     }
   };
 
@@ -236,6 +241,14 @@ export default function TenantDetails() {
 
   const { status, color } = getLeaseStatus(tenant.leaseEnd);
 
+  const openArrearsPaymentFlow = (month: ArrearsData["unpaidMonths"][number]) => {
+    setRecordPaymentContext({
+      monthYear: month.monthYear,
+      outstandingBalance: month.balance,
+    });
+    setRecordPaymentOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="max-w-7xl mx-auto px-4 py-6">
@@ -248,7 +261,7 @@ export default function TenantDetails() {
             data-testid="button-back"
           >
             <ArrowLeft className="w-5 h-5 mr-2" />
-            Retour
+            Back
           </Button>
 
           <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -468,17 +481,17 @@ export default function TenantDetails() {
                   {arrears.oldestUnpaidMonth && (
                     <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-6 rounded-lg">
                       <p className="text-lg font-semibold text-amber-800 dark:text-amber-400 mb-3">
-                        Plus Ancien Mois Impayé
+                        Oldest Overdue Month
                       </p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <p className="text-base text-muted-foreground">Mois</p>
+                          <p className="text-base text-muted-foreground">Month</p>
                           <p className="text-lg font-medium text-foreground">
                             {arrears.oldestUnpaidMonth.monthYear}
                           </p>
                         </div>
                         <div>
-                          <p className="text-base text-muted-foreground">Solde Restant</p>
+                          <p className="text-base text-muted-foreground">Outstanding Balance</p>
                           <p className="text-lg font-medium text-amber-700 dark:text-amber-400">
                             Rs {arrears.oldestUnpaidMonth.balance.toLocaleString()}
                           </p>
@@ -490,7 +503,7 @@ export default function TenantDetails() {
                   {/* Unpaid Months Summary - Show ALL with scrolling */}
                   <div>
                     <p className="text-lg font-semibold text-foreground mb-4">
-                      Mois Impayés ({arrears.unpaidMonths.length})
+                      Outstanding Months ({arrears.unpaidMonths.length})
                     </p>
                     <div className="max-h-[400px] overflow-y-auto space-y-3 pr-2">
                       {arrears.unpaidMonths.map((month, index) => (
@@ -502,7 +515,7 @@ export default function TenantDetails() {
                             <p className="text-lg font-medium text-foreground">{month.monthYear}</p>
                             {month.partiallyPaid && (
                               <p className="text-base text-amber-600 dark:text-amber-400">
-                                Partiellement payé: Rs {month.amountPaid.toLocaleString()}
+                                Partially Paid: Rs {month.amountPaid.toLocaleString()}
                               </p>
                             )}
                           </div>
@@ -512,52 +525,12 @@ export default function TenantDetails() {
                             </p>
                             <Button
                               size="sm"
-                              variant={paidMonthIndexes.has(index) ? "default" : "outline"}
-                              className={`h-12 px-4 min-w-24 ${paidMonthIndexes.has(index) ? 'bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 text-white border-green-600' : ''}`}
-                              data-testid={`button-mark-paid-${index}`}
-                              disabled={paidMonthIndexes.has(index)}
-                              onClick={() => {
-                                // Generate unique receipt number: REC-YYYY-NNNN
-                                const year = new Date().getFullYear();
-                                const randomNum = Math.floor(1000 + Math.random() * 9000);
-                                const receiptNumber = `REC-${year}-${randomNum}`;
-                                
-                                // Mark as paid shortcut - create full payment
-                                const paymentData = {
-                                  tenantId: tenant.id,
-                                  paymentDate: new Date().toISOString().split('T')[0],
-                                  monthYear: month.monthYear,
-                                  rentAmount: month.rentAmount.toString(),
-                                  utilitiesAmount: month.utilitiesAmount.toString(),
-                                  paymentAmount: month.totalDue.toString(),
-                                  receivedBy: landlord.fullName,
-                                  tdsPaidToMRA: false,
-                                  receiptNumber: receiptNumber,
-                                };
-                                
-                                apiRequest("POST", "/api/payments", paymentData)
-                                  .then(() => {
-                                    // Mark as paid immediately
-                                    setPaidMonthIndexes(prev => new Set(prev).add(index));
-                                    
-                                    toast({
-                                      title: "Payment recorded",
-                                      description: `${month.monthYear} marked as paid (${receiptNumber})`,
-                                    });
-                                    queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
-                                    queryClient.invalidateQueries({ queryKey: ["/api/tenants"] });
-                                    queryClient.invalidateQueries({ queryKey: ["/api/tenants", id, "arrears"] });
-                                  })
-                                  .catch((error) => {
-                                    toast({
-                                      title: "Erreur",
-                                      description: error.message || "Recording failed",
-                                      variant: "destructive",
-                                    });
-                                  });
-                              }}
+                              variant="outline"
+                              className="h-12 px-4 min-w-32"
+                              data-testid={`button-record-arrears-payment-${index}`}
+                              onClick={() => openArrearsPaymentFlow(month)}
                             >
-                              {paidMonthIndexes.has(index) ? '✓ Paid' : 'Paid'}
+                              Record Payment
                             </Button>
                           </div>
                         </div>
@@ -740,6 +713,38 @@ export default function TenantDetails() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Record Payment Dialog */}
+      <Dialog
+        open={recordPaymentOpen}
+        onOpenChange={(open) => {
+          setRecordPaymentOpen(open);
+          if (!open) {
+            setRecordPaymentContext(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">Record Payment</DialogTitle>
+            <DialogDescription>
+              {recordPaymentContext
+                ? `Review and record payment for ${recordPaymentContext.monthYear}. Outstanding balance: Rs ${recordPaymentContext.outstandingBalance.toLocaleString()}.`
+                : "Review and record this tenant payment."}
+            </DialogDescription>
+          </DialogHeader>
+          <RecordPaymentForm
+            preselectedTenantId={tenant.id}
+            onSuccess={() => {
+              setRecordPaymentOpen(false);
+              setRecordPaymentContext(null);
+              queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/tenants"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/tenants", id, "arrears"] });
+            }}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Archive Confirmation Dialog */}
       <Dialog open={archiveDialogOpen} onOpenChange={setArchiveDialogOpen}>

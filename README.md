@@ -50,3 +50,5 @@ Use only disposable test databases and fictional data for verification.
 LeaseDesk currently owns commercial landlord operations for properties/units, tenants, leases, payments, arrears, documents, expenses, and basic settings.
 
 It does not own online rent collection, maintenance ticketing, advanced accounting, tenant marketplaces, enterprise property-management workflows, or jurisdiction-specific tax filing.
+
+Excel bulk import is deferred until a safe post-launch importer is selected.

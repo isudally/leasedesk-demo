@@ -13,11 +13,9 @@ import TenantDetails from "@/pages/tenant-details";
 import AllPayments from "@/pages/all-payments";
 import AllExpenses from "@/pages/all-expenses";
 import NotFound from "@/pages/not-found";
-import { Home, Users, Store, Upload } from "lucide-react";
+import { Home, Users, Store } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { BulkUpload } from "@/components/bulk-upload";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -98,7 +96,6 @@ function LoginPage() {
 
 function BottomNav() {
   const [location] = useLocation();
-  const [bulkUploadDialogOpen, setBulkUploadDialogOpen] = useState(false);
   
   const navItems = [
     { path: "/", icon: Home, label: "Home", testId: "nav-home" },
@@ -107,14 +104,13 @@ function BottomNav() {
   ];
 
   return (
-    <>
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t z-50 pb-safe">
         <div className="pt-2 pb-1 text-center border-b border-border/50">
           <p className="text-xs text-muted-foreground">
             LeaseDesk property operations
           </p>
         </div>
-        <div className="grid grid-cols-4 h-20">
+        <div className="grid grid-cols-3 h-20">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location === item.path;
@@ -135,26 +131,8 @@ function BottomNav() {
               </Link>
             );
           })}
-          <button
-            data-testid="nav-bulk-upload"
-            onClick={() => setBulkUploadDialogOpen(true)}
-            className="flex flex-col items-center justify-center h-full gap-2 transition-colors text-muted-foreground hover:text-foreground"
-          >
-            <Upload className="h-8 w-8" />
-            <span className="text-sm font-semibold">Upload</span>
-          </button>
         </div>
       </nav>
-
-      <Dialog open={bulkUploadDialogOpen} onOpenChange={setBulkUploadDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-2xl">Bulk Upload - Import Data from Excel</DialogTitle>
-          </DialogHeader>
-          <BulkUpload onSuccess={() => setBulkUploadDialogOpen(false)} />
-        </DialogContent>
-      </Dialog>
-    </>
   );
 }
 

@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
+import fs from "node:fs";
+import path from "node:path";
 import type { AddressInfo } from "node:net";
 import { registerRoutes } from "./routes";
 
@@ -204,6 +206,19 @@ test("core commercial workflows use safe lifecycle, corrections, and document st
       server.close((error) => (error ? reject(error) : resolve()));
     });
   }
+});
+
+test("tenant arrears action opens the record payment flow instead of directly creating payments", () => {
+  const tenantDetailsSource = fs.readFileSync(
+    path.resolve(process.cwd(), "client/src/pages/tenant-details.tsx"),
+    "utf8",
+  );
+
+  assert.match(tenantDetailsSource, /RecordPaymentForm/);
+  assert.match(tenantDetailsSource, /button-record-arrears-payment/);
+  assert.doesNotMatch(tenantDetailsSource, /button-mark-paid/);
+  assert.doesNotMatch(tenantDetailsSource, /apiRequest\("POST", "\/api\/payments"/);
+  assert.doesNotMatch(tenantDetailsSource, /REC-\$\{year\}-\$\{randomNum\}/);
 });
 
 async function login(baseUrl: string) {
