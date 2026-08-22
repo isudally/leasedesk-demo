@@ -99,7 +99,9 @@ export default function Home() {
   const tenantsWithArrears = arrearsData?.filter(a => a.totalArrears > 0).length || 0;
 
   // Calculate total payments received
-  const totalPayments = allPayments?.reduce((sum, p) => sum + parseFloat(p.paymentAmount.toString()), 0) || 0;
+  const totalPayments = allPayments
+    ?.filter((p) => p.status !== "corrected" && p.status !== "reversal")
+    .reduce((sum, p) => sum + parseFloat(p.paymentAmount.toString()), 0) || 0;
 
   // Calculate total expenses incurred
   const totalExpenses = allExpenses?.reduce((sum, e) => sum + parseFloat(e.amount.toString()), 0) || 0;

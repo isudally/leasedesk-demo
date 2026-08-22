@@ -35,22 +35,26 @@ export interface IStorage {
   createStore(store: InsertStore): Promise<Store>;
   updateStore(id: string, store: Partial<InsertStore>): Promise<Store>;
   deleteStore(id: string): Promise<void>;
+  archiveStore(id: string): Promise<Store>;
   getTenants(): Promise<Tenant[]>;
   getTenant(id: string): Promise<Tenant | undefined>;
   createTenant(tenant: InsertTenant): Promise<Tenant>;
   updateTenant(id: string, tenant: Partial<InsertTenant>): Promise<Tenant>;
   deleteTenant(id: string): Promise<void>;
+  archiveTenant(id: string): Promise<Tenant>;
   getExpiringTenants(months: number): Promise<Tenant[]>;
   getPayments(tenantId?: string): Promise<Payment[]>;
   getPayment(id: string): Promise<Payment | undefined>;
   createPayment(payment: InsertPayment): Promise<Payment>;
   updatePayment(id: string, payment: Partial<InsertPayment>): Promise<Payment>;
+  correctPayment(id: string, payment: InsertPayment): Promise<{ original: Payment; correction: Payment }>;
   getPaymentsByMonth(monthYear: string): Promise<Payment[]>;
   getUnpaidTDS(): Promise<Payment[]>;
   getDocuments(tenantId: string): Promise<Document[]>;
   getDocument(id: string): Promise<Document | undefined>;
   createDocument(document: InsertDocument): Promise<Document>;
   deleteDocument(id: string): Promise<void>;
+  archiveDocument(id: string): Promise<Document>;
   getSetting(key: string): Promise<Setting | undefined>;
   setSetting(setting: InsertSetting): Promise<Setting>;
   getExpenses(): Promise<Expense[]>;
@@ -58,6 +62,7 @@ export interface IStorage {
   createExpense(expense: InsertExpense): Promise<Expense>;
   updateExpense(id: string, expense: Partial<InsertExpense>): Promise<Expense>;
   deleteExpense(id: string): Promise<void>;
+  archiveExpense(id: string): Promise<Expense>;
 }
 
 const now = () => new Date("2026-08-20T08:00:00.000Z");
@@ -116,6 +121,8 @@ const demoStores: Store[] = [
   floor,
   size,
   features,
+  isArchived: false,
+  archivedAt: null,
   createdAt: now(),
 }));
 
@@ -171,6 +178,7 @@ const demoTenants: Tenant[] = tenantSeed.map(([
   notes: "Fictional validation-demo record.",
   renewalDecision: "pending",
   isActive: true,
+  archivedAt: null,
   createdAt: now(),
   updatedAt: now(),
 }));
@@ -215,6 +223,8 @@ for (const tenant of demoTenants) {
         landlordSigned: true,
         tenantSigned: true,
         receiptNumber: `LD-${key.replace("-", "")}-${String(demoPayments.length + 1).padStart(3, "0")}`,
+        status: "posted",
+        correctionOfPaymentId: null,
         notes: partial ? "Partial demo payment." : "Demo payment received.",
         createdAt: now(),
       });
@@ -239,6 +249,10 @@ const demoDocuments: Document[] = [
   fileUrl: "#demo-document-placeholder",
   fileName,
   fileSize,
+  mimeType: "application/pdf",
+  storageKey: null,
+  isArchived: false,
+  archivedAt: null,
   notes: "Fictional demo metadata only. No real file is attached.",
   uploadedAt: now(),
 }));
@@ -263,6 +277,8 @@ const demoExpenses: Expense[] = expenseSeed.map(([expenseId, expenseDate, descri
   expenseType,
   storeId,
   splitMethod,
+  isArchived: false,
+  archivedAt: null,
   notes: "Fictional validation-demo expense.",
   createdAt: now(),
 }));
@@ -329,6 +345,8 @@ class DemoStorage implements IStorage {
       floor: store.floor,
       size: store.size ?? null,
       features: store.features ?? null,
+      isArchived: store.isArchived ?? false,
+      archivedAt: null,
       createdAt: now(),
     };
     this.stores.push(created);
@@ -338,6 +356,9 @@ class DemoStorage implements IStorage {
     return this.updateById<Store>(this.stores, storeId, store);
   }
   async deleteStore() { throw new Error("Deletes are disabled in the LeaseDesk demo."); }
+  async archiveStore(storeId: string) {
+    return this.updateById<Store>(this.stores, storeId, { isArchived: true, archivedAt: now() } as Partial<Store>);
+  }
 
   async getTenants() {
     return [...this.tenants].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -369,6 +390,7 @@ class DemoStorage implements IStorage {
       notes: tenant.notes ?? null,
       renewalDecision: tenant.renewalDecision ?? null,
       isActive: tenant.isActive ?? true,
+      archivedAt: null,
       createdAt: now(),
       updatedAt: now(),
     };
@@ -379,6 +401,9 @@ class DemoStorage implements IStorage {
     return this.updateById<Tenant>(this.tenants, tenantId, { ...tenant, updatedAt: now() });
   }
   async deleteTenant() { throw new Error("Deletes are disabled in the LeaseDesk demo."); }
+  async archiveTenant(tenantId: string) {
+    return this.updateById<Tenant>(this.tenants, tenantId, { isActive: false, archivedAt: now(), updatedAt: now() } as Partial<Tenant>);
+  }
   async getExpiringTenants(months: number) {
     const today = new Date();
     const futureDate = new Date();
@@ -412,6 +437,8 @@ class DemoStorage implements IStorage {
       landlordSigned: payment.landlordSigned ?? null,
       tenantSigned: payment.tenantSigned ?? null,
       receiptNumber: payment.receiptNumber,
+      status: payment.status ?? "posted",
+      correctionOfPaymentId: payment.correctionOfPaymentId ?? null,
       notes: payment.notes ?? null,
       createdAt: now(),
     };
@@ -420,6 +447,15 @@ class DemoStorage implements IStorage {
   }
   async updatePayment(paymentId: string, payment: Partial<InsertPayment>) {
     return this.updateById<Payment>(this.payments, paymentId, payment);
+  }
+  async correctPayment(paymentId: string, payment: InsertPayment) {
+    const original = await this.updateById<Payment>(this.payments, paymentId, { status: "corrected" } as Partial<Payment>);
+    const correction = await this.createPayment({
+      ...payment,
+      status: "posted",
+      correctionOfPaymentId: paymentId,
+    });
+    return { original, correction };
   }
   async getPaymentsByMonth(paymentMonthYear: string) {
     return this.payments.filter((payment) => payment.monthYear === paymentMonthYear);
@@ -439,6 +475,10 @@ class DemoStorage implements IStorage {
       fileUrl: document.fileUrl,
       fileName: document.fileName,
       fileSize: document.fileSize ?? null,
+      mimeType: document.mimeType ?? null,
+      storageKey: document.storageKey ?? null,
+      isArchived: document.isArchived ?? false,
+      archivedAt: null,
       notes: document.notes ?? null,
       uploadedAt: now(),
     };
@@ -446,6 +486,9 @@ class DemoStorage implements IStorage {
     return created;
   }
   async deleteDocument() { throw new Error("Deletes are disabled in the LeaseDesk demo."); }
+  async archiveDocument(documentId: string) {
+    return this.updateById<Document>(this.documents, documentId, { isArchived: true, archivedAt: now() } as Partial<Document>);
+  }
 
   async getSetting(key: string) { return this.settings.find((setting) => setting.key === key); }
   async setSetting(setting: InsertSetting) {
@@ -475,6 +518,8 @@ class DemoStorage implements IStorage {
       expenseType: expense.expenseType,
       storeId: expense.storeId ?? null,
       splitMethod: expense.splitMethod ?? null,
+      isArchived: expense.isArchived ?? false,
+      archivedAt: null,
       notes: expense.notes ?? null,
       createdAt: now(),
     };
@@ -485,6 +530,9 @@ class DemoStorage implements IStorage {
     return this.updateById<Expense>(this.expenses, expenseId, expense);
   }
   async deleteExpense() { throw new Error("Deletes are disabled in the LeaseDesk demo."); }
+  async archiveExpense(expenseId: string) {
+    return this.updateById<Expense>(this.expenses, expenseId, { isArchived: true, archivedAt: now() } as Partial<Expense>);
+  }
 
   private updateById<T extends { id: string }>(items: T[], itemId: string, update: Partial<Omit<T, "id">>) {
     const item = items.find((entry) => entry.id === itemId);

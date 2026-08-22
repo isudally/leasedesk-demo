@@ -85,6 +85,12 @@ export class DatabaseStorage implements IStorage {
     throw new Error("Permanent deletes are not enabled.");
   }
 
+  async archiveStore(id: string) {
+    return this.updateOne(
+      this.db.update(stores).set({ isArchived: true, archivedAt: new Date() }).where(eq(stores.id, id)).returning(),
+    );
+  }
+
   async getTenants() {
     return this.db.select().from(tenants).orderBy(desc(tenants.createdAt));
   }
@@ -105,6 +111,16 @@ export class DatabaseStorage implements IStorage {
 
   async deleteTenant() {
     throw new Error("Permanent deletes are not enabled.");
+  }
+
+  async archiveTenant(id: string) {
+    return this.updateOne(
+      this.db
+        .update(tenants)
+        .set({ isActive: false, archivedAt: new Date(), updatedAt: new Date() })
+        .where(eq(tenants.id, id))
+        .returning(),
+    );
   }
 
   async getExpiringTenants(months: number) {
@@ -138,6 +154,18 @@ export class DatabaseStorage implements IStorage {
     return this.updateOne(this.db.update(payments).set(payment).where(eq(payments.id, id)).returning());
   }
 
+  async correctPayment(id: string, payment: InsertPayment) {
+    const original = await this.updateOne(
+      this.db.update(payments).set({ status: "corrected" }).where(eq(payments.id, id)).returning(),
+    );
+    const correction = await this.createPayment({
+      ...payment,
+      status: "posted",
+      correctionOfPaymentId: id,
+    });
+    return { original, correction };
+  }
+
   async getPaymentsByMonth(monthYear: string) {
     return this.db.select().from(payments).where(eq(payments.monthYear, monthYear));
   }
@@ -160,6 +188,12 @@ export class DatabaseStorage implements IStorage {
 
   async deleteDocument() {
     throw new Error("Permanent deletes are not enabled.");
+  }
+
+  async archiveDocument(id: string) {
+    return this.updateOne(
+      this.db.update(documents).set({ isArchived: true, archivedAt: new Date() }).where(eq(documents.id, id)).returning(),
+    );
   }
 
   async getSetting(key: string) {
@@ -195,6 +229,12 @@ export class DatabaseStorage implements IStorage {
 
   async deleteExpense() {
     throw new Error("Permanent deletes are not enabled.");
+  }
+
+  async archiveExpense(id: string) {
+    return this.updateOne(
+      this.db.update(expenses).set({ isArchived: true, archivedAt: new Date() }).where(eq(expenses.id, id)).returning(),
+    );
   }
 
   private async updateOne<T>(query: Promise<T[]>) {
