@@ -1,6 +1,7 @@
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -17,6 +18,83 @@ import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BulkUpload } from "@/components/bulk-upload";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { apiRequest, getQueryFn } from "@/lib/queryClient";
+
+interface AuthUser {
+  user: {
+    id: string;
+    username: string;
+  };
+}
+
+function LoginPage() {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const loginMutation = useMutation({
+    mutationFn: async () => {
+      setError("");
+      await apiRequest("POST", "/api/auth/login", { username, password });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    },
+    onError: () => {
+      setError("Invalid username or password.");
+    },
+  });
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle className="text-2xl">LeaseDesk</CardTitle>
+          <CardDescription>Sign in to manage commercial lease operations.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              loginMutation.mutate();
+            }}
+          >
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                autoComplete="username"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+              />
+            </div>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
+              {loginMutation.isPending ? "Signing in..." : "Sign in"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 function BottomNav() {
   const [location] = useLocation();
@@ -81,6 +159,33 @@ function BottomNav() {
 }
 
 function Router() {
+  const { data: auth, isLoading } = useQuery<AuthUser | null>({
+    queryKey: ["/api/auth/me"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+  });
+
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/auth/logout");
+    },
+    onSuccess: () => {
+      queryClient.clear();
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-sm text-muted-foreground">Loading LeaseDesk...</p>
+      </div>
+    );
+  }
+
+  if (!auth) {
+    return <LoginPage />;
+  }
+
   return (
     <div className="min-h-screen pb-20 bg-background">
       <header className="sticky top-0 z-40 bg-primary text-primary-foreground shadow-md">
@@ -94,7 +199,18 @@ function Router() {
               <span className="text-sm opacity-90 leading-tight">Commercial Lease Management</span>
             </div>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <span className="hidden sm:inline text-sm opacity-90">{auth.user.username}</span>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => logoutMutation.mutate()}
+              disabled={logoutMutation.isPending}
+            >
+              Logout
+            </Button>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
       

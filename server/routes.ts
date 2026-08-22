@@ -1,9 +1,14 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { ensureProductionAdminUser, requireAuth, setupAuth } from "./auth";
 import { insertLandlordSchema, insertStoreSchema, insertTenantSchema, insertPaymentSchema, insertDocumentSchema, insertSettingSchema, insertExpenseSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  setupAuth(app, storage);
+  await ensureProductionAdminUser(storage);
+  app.use("/api", requireAuth);
+
   // ====== LANDLORDS ROUTES ======
   app.get("/api/landlords", async (req, res) => {
     try {
