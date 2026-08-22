@@ -5,7 +5,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { ensureProductionAdminUser, requireAuth, setupAuth } from "./auth";
 import { insertLandlordSchema, insertStoreSchema, insertTenantSchema, insertPaymentSchema, insertDocumentSchema, insertSettingSchema, insertExpenseSchema } from "@shared/schema";
-import { documentPathFromStorageKey, safeDocumentSize, uploadTenantDocument, validateDocumentSignature } from "./document-files";
+import { getRuntimeConfig } from "./config";
+import { documentPathFromStorageKey, getDocumentUploadRoot, safeDocumentSize, uploadTenantDocument, validateDocumentSignature } from "./document-files";
 
 const inactivePaymentStatuses = new Set(["corrected", "reversal"]);
 
@@ -48,6 +49,17 @@ function buildPaymentData(body: Record<string, unknown>, current?: Record<string
   };
 }
 
+async function recordAuditEvent(
+  req: Request,
+  event: { eventType: string; entityType: string; entityId: string; detail?: string },
+) {
+  await storage.createAuditEvent({
+    ...event,
+    userId: req.session.userId ?? null,
+    detail: event.detail ?? null,
+  });
+}
+
 function runTenantDocumentUpload(req: Request, res: Response, next: NextFunction) {
   uploadTenantDocument(req, res, async (error) => {
     if (!error) {
@@ -69,6 +81,23 @@ function runTenantDocumentUpload(req: Request, res: Response, next: NextFunction
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app, storage);
   await ensureProductionAdminUser(storage);
+
+  app.get("/health", (_req, res) => {
+    res.json({ status: "ok", mode: getRuntimeConfig().mode });
+  });
+
+  app.get("/ready", async (_req, res) => {
+    try {
+      await storage.getLandlords();
+      if (getRuntimeConfig().isProductionMode) {
+        await fs.access(getDocumentUploadRoot());
+      }
+      res.json({ status: "ready", mode: getRuntimeConfig().mode });
+    } catch (error) {
+      res.status(503).json({ status: "not_ready" });
+    }
+  });
+
   app.use("/api", requireAuth);
 
   // ====== LANDLORDS ROUTES ======
@@ -114,7 +143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.delete("/api/landlords/:id", async (req, res) => {
-    res.status(403).json({ error: "Deletes are disabled in the LeaseDesk validation demo" });
+    res.status(403).json({ error: "Permanent landlord deletion is disabled. Keep the landlord record for history." });
   });
 
   // ====== STORES ROUTES ======
@@ -178,6 +207,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(409).json({ error: "This unit has an active tenant. Archive or reassign the tenant before archiving the unit." });
       }
       const store = await storage.archiveStore(req.params.id);
+      await recordAuditEvent(req, {
+        eventType: "store.archived",
+        entityType: "store",
+        entityId: store.id,
+      });
       res.json(store);
     } catch (error) {
       res.status(404).json({ error: "Store not found" });
@@ -297,6 +331,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/tenants/:id", async (req, res) => {
     try {
       const tenant = await storage.archiveTenant(req.params.id);
+      await recordAuditEvent(req, {
+        eventType: "tenant.archived",
+        entityType: "tenant",
+        entityId: tenant.id,
+      });
       res.json(tenant);
     } catch (error) {
       res.status(404).json({ error: "Tenant not found" });
@@ -306,6 +345,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/tenants/:id/archive", async (req, res) => {
     try {
       const tenant = await storage.archiveTenant(req.params.id);
+      await recordAuditEvent(req, {
+        eventType: "tenant.archived",
+        entityType: "tenant",
+        entityId: tenant.id,
+      });
       res.json(tenant);
     } catch (error) {
       res.status(404).json({ error: "Tenant not found" });
@@ -379,6 +423,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       const validatedData = insertPaymentSchema.parse(paymentData);
       const result = await storage.correctPayment(req.params.id, validatedData);
+      await recordAuditEvent(req, {
+        eventType: "payment.corrected",
+        entityType: "payment",
+        entityId: result.original.id,
+        detail: `Correction payment ${result.correction.id} created.`,
+      });
       res.status(201).json(result);
     } catch (error: any) {
       res.status(400).json({ error: error.message || "Failed to correct payment" });
@@ -573,6 +623,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const validatedData = insertDocumentSchema.parse(documentData);
       const document = await storage.createDocument(validatedData);
+      await recordAuditEvent(req, {
+        eventType: "document.uploaded",
+        entityType: "document",
+        entityId: document.id,
+      });
       res.status(201).json(document);
     } catch (error: any) {
       if (req.file?.path) {
@@ -585,6 +640,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/documents/:id", async (req, res) => {
     try {
       const document = await storage.archiveDocument(req.params.id);
+      await recordAuditEvent(req, {
+        eventType: "document.archived",
+        entityType: "document",
+        entityId: document.id,
+      });
       res.json(document);
     } catch (error) {
       res.status(404).json({ error: "Document not found" });
@@ -675,6 +735,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/expenses/:id", async (req, res) => {
     try {
       const expense = await storage.archiveExpense(req.params.id);
+      await recordAuditEvent(req, {
+        eventType: "expense.archived",
+        entityType: "expense",
+        entityId: expense.id,
+      });
       res.json(expense);
     } catch (error) {
       res.status(404).json({ error: "Expense not found" });
@@ -803,7 +868,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             utilitiesCharge: row["Utilities Charge"]?.toString() || "200",
             deposit: row["Deposit"]?.toString() || null,
             depositPaid: row["Deposit Paid"] === "true" || row["Deposit Paid"] === true,
-            premisesAddress: row["Premises Address"] || "Riverton Market Plaza",
+            premisesAddress: row["Premises Address"] || null,
             commercialPurpose: row["Commercial Purpose"] || null,
             notes: row["Notes"] || null,
             isActive: true,
@@ -820,6 +885,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(results);
     } catch (error: any) {
       res.status(400).json({ error: error.message || "Bulk upload failed" });
+    }
+  });
+
+  app.get("/api/audit-events", async (req, res) => {
+    try {
+      const entityType = typeof req.query.entityType === "string" ? req.query.entityType : undefined;
+      const entityId = typeof req.query.entityId === "string" ? req.query.entityId : undefined;
+      const events = await storage.getAuditEvents(entityType, entityId);
+      res.json(events);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch audit events" });
     }
   });
 

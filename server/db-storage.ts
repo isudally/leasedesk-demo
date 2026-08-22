@@ -1,8 +1,9 @@
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { getDb } from "./db";
 import type { IStorage } from "./storage";
 import {
   documents,
+  auditEvents,
   expenses,
   landlords,
   payments,
@@ -18,6 +19,7 @@ import {
   type InsertStore,
   type InsertTenant,
   type InsertUser,
+  type InsertAuditEvent,
 } from "@shared/schema";
 
 export class DatabaseStorage implements IStorage {
@@ -235,6 +237,23 @@ export class DatabaseStorage implements IStorage {
     return this.updateOne(
       this.db.update(expenses).set({ isArchived: true, archivedAt: new Date() }).where(eq(expenses.id, id)).returning(),
     );
+  }
+
+  async createAuditEvent(event: InsertAuditEvent) {
+    return (await this.db.insert(auditEvents).values(event).returning())[0];
+  }
+
+  async getAuditEvents(entityType?: string, entityId?: string) {
+    const query = this.db.select().from(auditEvents);
+    if (entityType && entityId) {
+      return query
+        .where(and(eq(auditEvents.entityType, entityType), eq(auditEvents.entityId, entityId)))
+        .orderBy(desc(auditEvents.createdAt));
+    }
+    if (entityType) {
+      return query.where(eq(auditEvents.entityType, entityType)).orderBy(desc(auditEvents.createdAt));
+    }
+    return query.orderBy(desc(auditEvents.createdAt));
   }
 
   private async updateOne<T>(query: Promise<T[]>) {

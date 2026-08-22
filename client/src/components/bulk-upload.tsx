@@ -67,7 +67,7 @@ export function BulkUpload({ onSuccess }: { onSuccess?: () => void }) {
           "Utilities Charge": "200",
           "Deposit": "15000 (optional)",
           "Deposit Paid": "false",
-          "Premises Address": "Riverton Market Plaza",
+          "Premises Address": "Example Commercial Plaza",
           "Commercial Purpose": "Retail clothing store",
           "Notes": "Any additional notes (optional)"
         }

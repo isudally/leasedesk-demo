@@ -15,6 +15,11 @@ test("core commercial workflows use safe lifecycle, corrections, and document st
   try {
     const { port } = server.address() as AddressInfo;
     const baseUrl = `http://127.0.0.1:${port}`;
+    const health = await fetch(`${baseUrl}/health`);
+    assert.equal(health.status, 200);
+    const readiness = await fetch(`${baseUrl}/ready`);
+    assert.equal(readiness.status, 200);
+
     const cookie = await login(baseUrl);
 
     const stores = await requestJson<any[]>(baseUrl, "/api/stores", { cookie });
@@ -98,6 +103,11 @@ test("core commercial workflows use safe lifecycle, corrections, and document st
     assert.equal(correction.original.status, "corrected");
     assert.equal(correction.correction.correctionOfPaymentId, originalPayment.id);
 
+    const paymentAuditEvents = await requestJson<any[]>(baseUrl, `/api/audit-events?entityType=payment&entityId=${originalPayment.id}`, {
+      cookie,
+    });
+    assert.equal(paymentAuditEvents[0]?.eventType, "payment.corrected");
+
     const archivedTenant = await requestJson<any>(baseUrl, "/api/tenants/tn-011/archive", {
       cookie,
       method: "PATCH",
@@ -178,6 +188,14 @@ test("core commercial workflows use safe lifecycle, corrections, and document st
       method: "DELETE",
     });
     assert.equal(archivedDocument.isArchived, true);
+
+    const documentAuditEvents = await requestJson<any[]>(baseUrl, `/api/audit-events?entityType=document&entityId=${uploadedDocument.id}`, {
+      cookie,
+    });
+    assert.deepEqual(
+      documentAuditEvents.map((event) => event.eventType).sort(),
+      ["document.archived", "document.uploaded"],
+    );
 
     const tds = await fetch(`${baseUrl}/api/payments/tds/unpaid`, { headers: { cookie } });
     assert.equal(tds.status, 410);

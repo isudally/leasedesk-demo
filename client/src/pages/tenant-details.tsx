@@ -97,7 +97,7 @@ export default function TenantDetails() {
     },
     onSuccess: () => {
       toast({
-        title: "Locataire archivé",
+        title: "Tenant archived",
         description: "Le locataire a été archivé avec succès.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/tenants"] });
@@ -119,7 +119,7 @@ export default function TenantDetails() {
     },
     onSuccess: () => {
       toast({
-        title: "Locataire archivé",
+        title: "Tenant archived",
         description: "Le locataire a été archivé avec succès.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/tenants"] });
@@ -227,7 +227,7 @@ export default function TenantDetails() {
       <div className="min-h-screen bg-background">
         <div className="max-w-7xl mx-auto px-4 py-6">
           <Card className="p-6">
-            <p className="text-lg text-muted-foreground">Locataire non trouvé</p>
+            <p className="text-lg text-muted-foreground">Tenant not found</p>
           </Card>
         </div>
       </div>
@@ -286,7 +286,7 @@ export default function TenantDetails() {
         {/* Tenant Information */}
         <Card className="bg-card rounded-lg shadow-md mb-6">
           <CardHeader className="p-6">
-            <CardTitle className="text-2xl font-semibold text-foreground">Informations du Locataire</CardTitle>
+            <CardTitle className="text-2xl font-semibold text-foreground">Tenant Information</CardTitle>
           </CardHeader>
           <CardContent className="p-6 pt-0">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -433,12 +433,12 @@ export default function TenantDetails() {
                 {arrears.totalArrears > 0 ? (
                   <>
                     <AlertCircle className="w-7 h-7 text-red-500" />
-                    Arriérés de Paiement
+                    Payment Arrears
                   </>
                 ) : (
                   <>
                     <CheckCircle className="w-7 h-7 text-green-500" />
-                    Statut de Paiement
+                    Payment Status
                   </>
                 )}
               </CardTitle>
@@ -452,13 +452,13 @@ export default function TenantDetails() {
                       <AlertCircle className="w-8 h-8 text-red-500 flex-shrink-0 mt-1" />
                       <div className="flex-1">
                         <p className="text-lg font-semibold text-red-700 dark:text-red-400 mb-2">
-                          Montant Total Dû
+                          Total Amount Due
                         </p>
                         <p className="text-3xl font-bold text-red-600 dark:text-red-400">
                           Rs {arrears.totalArrears.toLocaleString()}
                         </p>
                         <p className="text-lg text-red-600/80 dark:text-red-400/80 mt-2">
-                          {arrears.unpaidMonths.length} mois impayé{arrears.unpaidMonths.length > 1 ? 's' : ''}
+                          {arrears.unpaidMonths.length} unpaid month{arrears.unpaidMonths.length > 1 ? 's' : ''}
                         </p>
                       </div>
                     </div>
@@ -541,8 +541,8 @@ export default function TenantDetails() {
                                     setPaidMonthIndexes(prev => new Set(prev).add(index));
                                     
                                     toast({
-                                      title: "Paiement enregistré",
-                                      description: `${month.monthYear} marqué comme payé (${receiptNumber})`,
+                                      title: "Payment recorded",
+                                      description: `${month.monthYear} marked as paid (${receiptNumber})`,
                                     });
                                     queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
                                     queryClient.invalidateQueries({ queryKey: ["/api/tenants"] });
@@ -551,13 +551,13 @@ export default function TenantDetails() {
                                   .catch((error) => {
                                     toast({
                                       title: "Erreur",
-                                      description: error.message || "Échec de l'enregistrement",
+                                      description: error.message || "Recording failed",
                                       variant: "destructive",
                                     });
                                   });
                               }}
                             >
-                              {paidMonthIndexes.has(index) ? '✓ Payé' : 'Payé'}
+                              {paidMonthIndexes.has(index) ? '✓ Paid' : 'Paid'}
                             </Button>
                           </div>
                         </div>
@@ -571,10 +571,10 @@ export default function TenantDetails() {
                     <CheckCircle className="w-8 h-8 text-green-500 flex-shrink-0 mt-1" />
                     <div>
                       <p className="text-lg font-semibold text-green-700 dark:text-green-400 mb-2">
-                        Tous les Paiements à Jour
+                        All Payments Up To Date
                       </p>
                       <p className="text-lg text-green-600/80 dark:text-green-400/80">
-                        Aucun arriéré. Le locataire est à jour dans ses paiements.
+                        No arrears. This tenant is up to date with payments.
                       </p>
                     </div>
                   </div>
@@ -688,7 +688,7 @@ export default function TenantDetails() {
               </div>
             ) : (
               <p className="text-lg text-muted-foreground">
-                No document metadata recorded for this demo tenant.
+                No document metadata recorded for this tenant.
               </p>
             )}
           </CardContent>
@@ -709,7 +709,7 @@ export default function TenantDetails() {
         <Dialog open={!!selectedPayment} onOpenChange={(open) => !open && setSelectedPayment(null)}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-2xl">Reçu de Paiement</DialogTitle>
+              <DialogTitle className="text-2xl">Payment Receipt</DialogTitle>
             </DialogHeader>
             <ReceiptGenerator
               payment={{
@@ -745,9 +745,9 @@ export default function TenantDetails() {
       <Dialog open={archiveDialogOpen} onOpenChange={setArchiveDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Archiver le locataire</DialogTitle>
+            <DialogTitle>Archive Tenant</DialogTitle>
             <DialogDescription>
-              Êtes-vous sûr de vouloir archiver {tenant.tenantName}? Le locataire sera marqué comme inactif mais toutes les données seront conservées.
+              Are you sure you want to archive {tenant.tenantName}? The tenant will be marked inactive and all history will be retained.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
@@ -756,7 +756,7 @@ export default function TenantDetails() {
               onClick={() => setArchiveDialogOpen(false)}
               data-testid="button-cancel-archive"
             >
-              Annuler
+              Cancel
             </Button>
             <Button
               variant="default"
@@ -764,7 +764,7 @@ export default function TenantDetails() {
               disabled={archiveTenantMutation.isPending}
               data-testid="button-confirm-archive"
             >
-              {archiveTenantMutation.isPending ? "Archivage..." : "Confirmer"}
+              {archiveTenantMutation.isPending ? "Archiving..." : "Confirm"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -774,9 +774,9 @@ export default function TenantDetails() {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Archiver le locataire</DialogTitle>
+            <DialogTitle>Archive Tenant</DialogTitle>
             <DialogDescription>
-              Cette action conserve l'historique du locataire et masque le dossier des vues actives.
+              This keeps tenant history and hides the record from active views.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
@@ -785,7 +785,7 @@ export default function TenantDetails() {
               onClick={() => setDeleteDialogOpen(false)}
               data-testid="button-cancel-delete"
             >
-              Annuler
+              Cancel
             </Button>
             <Button
               variant="default"
@@ -793,7 +793,7 @@ export default function TenantDetails() {
               disabled={deleteTenantMutation.isPending}
               data-testid="button-confirm-delete"
             >
-              {deleteTenantMutation.isPending ? "Archivage..." : "Archiver"}
+              {deleteTenantMutation.isPending ? "Archiving..." : "Archive"}
             </Button>
           </DialogFooter>
         </DialogContent>

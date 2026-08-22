@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import type { AddressInfo } from "node:net";
 import { ensureProductionAdminUser, requireAuth, setupAuth } from "./auth";
 import { getPool, resetDatabaseConnectionForTests } from "./db";
@@ -14,6 +17,7 @@ test("production Postgres storage persists records and sessions", { skip: !shoul
   process.env.SESSION_SECRET = "leasedesk-postgres-integration-session-secret";
   process.env.LEASEDESK_ADMIN_USERNAME = "owner";
   process.env.LEASEDESK_ADMIN_PASSWORD = "correct-password";
+  process.env.LEASEDESK_UPLOAD_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "leasedesk-postgres-uploads-"));
 
   try {
     await resetDatabaseConnectionForTests();
@@ -108,6 +112,13 @@ test("production Postgres storage persists records and sessions", { skip: !shoul
       splitMethod: "equal",
       notes: "Fictional integration expense.",
     });
+    const auditEvent = await storage.createAuditEvent({
+      eventType: "payment.corrected",
+      entityType: "payment",
+      entityId: payment.id,
+      userId: "integration-test-user",
+      detail: "Fictional integration audit event.",
+    });
 
     await resetDatabaseConnectionForTests();
 
@@ -116,11 +127,13 @@ test("production Postgres storage persists records and sessions", { skip: !shoul
     const persistedPayment = await storageAfterReconnect.getPayment(payment.id);
     const persistedDocuments = await storageAfterReconnect.getDocuments(tenant.id);
     const persistedExpenses = await storageAfterReconnect.getExpenses();
+    const persistedAuditEvents = await storageAfterReconnect.getAuditEvents("payment", payment.id);
 
     assert.equal(persistedTenant?.tenantName, "Integration Tenant Ltd");
     assert.equal(persistedPayment?.notes, "Fictional integration payment updated.");
     assert.equal(persistedDocuments.length, 1);
     assert.equal(persistedExpenses.length, 1);
+    assert.equal(persistedAuditEvents[0]?.id, auditEvent.id);
 
     await verifyPostgresSessionStore(storageAfterReconnect);
   } finally {
@@ -185,6 +198,7 @@ async function resetTables() {
     truncate table
       documents,
       expenses,
+      audit_events,
       payments,
       tenants,
       stores,
@@ -209,6 +223,7 @@ function captureEnv() {
     LEASEDESK_ADMIN_USERNAME: process.env.LEASEDESK_ADMIN_USERNAME,
     LEASEDESK_ADMIN_PASSWORD: process.env.LEASEDESK_ADMIN_PASSWORD,
     LEASEDESK_ADMIN_PASSWORD_HASH: process.env.LEASEDESK_ADMIN_PASSWORD_HASH,
+    LEASEDESK_UPLOAD_DIR: process.env.LEASEDESK_UPLOAD_DIR,
   };
 }
 

@@ -48,27 +48,27 @@ export function ReceiptGenerator({ payment, tenant, landlord }: ReceiptGenerator
     const landlordAmount = Number(payment.landlordAmount);
     const balance = Number(payment.balance);
 
-    // Header - LeaseDesk demo
+    // Header
     pdf.setFontSize(20);
     pdf.setFont("helvetica", "bold");
-    pdf.text("RIVERTON MARKET PLAZA", 105, y, { align: "center" });
+    pdf.text("LEASEDESK", 105, y, { align: "center" });
     y += 8;
 
     pdf.setFontSize(11);
     pdf.setFont("helvetica", "normal");
-    pdf.text("Commercial property validation demo", 105, y, { align: "center" });
+    pdf.text("Commercial property operations", 105, y, { align: "center" });
     y += 15;
 
     // Receipt Title
     pdf.setFontSize(16);
     pdf.setFont("helvetica", "bold");
-    pdf.text("REÇU DE PAIEMENT / PAYMENT RECEIPT", 105, y, { align: "center" });
+    pdf.text("PAYMENT RECEIPT", 105, y, { align: "center" });
     y += 15;
 
     // Receipt Number and Date
     pdf.setFontSize(11);
     pdf.setFont("helvetica", "bold");
-    pdf.text(`Numéro de reçu: ${payment.receiptNumber}`, 20, y);
+    pdf.text(`Receipt number: ${payment.receiptNumber}`, 20, y);
     pdf.text(`Date: ${new Date(payment.paymentDate).toLocaleDateString("fr-FR")}`, 150, y);
     y += 10;
     pdf.text(`Mois concerné: ${payment.monthYear}`, 20, y);
@@ -86,7 +86,7 @@ export function ReceiptGenerator({ payment, tenant, landlord }: ReceiptGenerator
     pdf.text(`Tél: ${landlord.phone}`, 20, y);
     y += 15;
 
-    // Tenant Details (Locataire)
+    // Tenant details
     pdf.setFont("helvetica", "bold");
     pdf.text("LOCATAIRE / TENANT:", 20, y);
     y += 7;
@@ -208,13 +208,13 @@ export function ReceiptGenerator({ payment, tenant, landlord }: ReceiptGenerator
     pdf.text("Landlord Signature", 25, y);
     pdf.text("Tenant Signature", 120, y);
 
-    // Add demo footer at bottom of page
+    // Add footer at bottom of page
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
     pdf.setFontSize(8);
     pdf.setFont("helvetica", "normal");
     pdf.setTextColor(128, 128, 128);
-    const footerText = 'Document generated via LeaseDesk validation demo | Fictional data';
+    const footerText = 'Document generated via LeaseDesk';
     const footerWidth = pdf.getTextWidth(footerText);
     pdf.text(footerText, (pageWidth - footerWidth) / 2, pageHeight - 10);
     pdf.setTextColor(0, 0, 0);
@@ -251,15 +251,15 @@ export function ReceiptGenerator({ payment, tenant, landlord }: ReceiptGenerator
       pdf.save(filename);
 
       toast({
-        title: "Reçu téléchargé",
-        description: `Le reçu ${payment.receiptNumber} a été téléchargé avec succès.`,
+        title: "Receipt downloaded",
+        description: `Receipt ${payment.receiptNumber} was downloaded successfully.`,
       });
     } catch (error) {
       console.error("Error generating receipt PDF:", error);
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: "Impossible de générer le reçu PDF. Veuillez réessayer.",
+        description: "Could not generate the receipt PDF. Please try again.",
       });
     } finally {
       setIsGenerating(false);
@@ -278,15 +278,15 @@ export function ReceiptGenerator({ payment, tenant, landlord }: ReceiptGenerator
         const file = new File([pdfBlob], filename, { type: "application/pdf" });
         const shareData = {
           files: [file],
-          title: `Reçu ${payment.receiptNumber}`,
-          text: `Reçu de paiement pour ${tenant.businessName || tenant.name} - ${payment.monthYear}\nMontant reçu: Rs ${Number(payment.paymentAmount).toFixed(2)}`,
+          title: `Receipt ${payment.receiptNumber}`,
+          text: `Payment receipt for ${tenant.businessName || tenant.name} - ${payment.monthYear}\nAmount received: Rs ${Number(payment.paymentAmount).toFixed(2)}`,
         };
 
         if (navigator.canShare(shareData)) {
           await navigator.share(shareData);
           toast({
-            title: "Reçu partagé",
-            description: "Le reçu a été partagé avec succès via WhatsApp.",
+            title: "Receipt shared",
+            description: "The receipt was shared successfully.",
           });
           return;
         }
@@ -317,10 +317,10 @@ export function ReceiptGenerator({ payment, tenant, landlord }: ReceiptGenerator
         <div className="space-y-4">
           <div>
             <h3 className="text-xl font-semibold text-foreground mb-2">
-              Reçu de Paiement
+              Payment Receipt
             </h3>
             <p className="text-lg text-muted-foreground">
-              Générer et partager le reçu {payment.receiptNumber}
+              Generate and share receipt {payment.receiptNumber}
             </p>
           </div>
 

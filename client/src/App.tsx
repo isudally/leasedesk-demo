@@ -111,7 +111,7 @@ function BottomNav() {
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t z-50 pb-safe">
         <div className="pt-2 pb-1 text-center border-b border-border/50">
           <p className="text-xs text-muted-foreground">
-            LeaseDesk validation demo - fictional data only
+            LeaseDesk property operations
           </p>
         </div>
         <div className="grid grid-cols-4 h-20">
