@@ -13,7 +13,7 @@ import TenantDetails from "@/pages/tenant-details";
 import AllPayments from "@/pages/all-payments";
 import AllExpenses from "@/pages/all-expenses";
 import NotFound from "@/pages/not-found";
-import { Home, Users, Store } from "lucide-react";
+import { CreditCard, Home, Receipt, Store, Users } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -96,43 +96,75 @@ function LoginPage() {
 
 function BottomNav() {
   const [location] = useLocation();
-  
+
   const navItems = [
     { path: "/", icon: Home, label: "Home", testId: "nav-home" },
     { path: "/landlords", icon: Users, label: "Landlords", testId: "nav-landlords" },
-    { path: "/stores", icon: Store, label: "Stores", testId: "nav-stores" },
+    { path: "/stores", icon: Store, label: "Units", testId: "nav-stores" },
   ];
 
   return (
-      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t z-50 pb-safe">
-        <div className="pt-2 pb-1 text-center border-b border-border/50">
-          <p className="text-xs text-muted-foreground">
-            LeaseDesk property operations
-          </p>
-        </div>
-        <div className="grid grid-cols-3 h-20">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location === item.path;
-            
-            return (
-              <Link key={item.path} href={item.path}>
-                <button
-                  data-testid={item.testId}
-                  className={`flex flex-col items-center justify-center h-full gap-2 transition-colors ${
-                    isActive
-                      ? "text-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <Icon className="h-8 w-8" />
-                  <span className="text-sm font-semibold">{item.label}</span>
-                </button>
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur md:hidden">
+      <div className="grid grid-cols-3 h-16">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = location === item.path;
+
+          return (
+            <Link key={item.path} href={item.path}>
+              <button
+                data-testid={item.testId}
+                className={`flex h-full w-full flex-col items-center justify-center gap-1 transition-colors ${
+                  isActive
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+                <span className="text-xs font-semibold">{item.label}</span>
+              </button>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
+function TopNav() {
+  const [location] = useLocation();
+
+  const navItems = [
+    { path: "/", icon: Home, label: "Overview", testId: "nav-overview" },
+    { path: "/landlords", icon: Users, label: "Landlords", testId: "nav-landlords-desktop" },
+    { path: "/stores", icon: Store, label: "Units", testId: "nav-stores-desktop" },
+    { path: "/payments", icon: CreditCard, label: "Payments", testId: "nav-payments-desktop" },
+    { path: "/expenses", icon: Receipt, label: "Expenses", testId: "nav-expenses-desktop" },
+  ];
+
+  return (
+    <nav className="hidden md:flex items-center gap-1" aria-label="Primary navigation">
+      {navItems.map((item) => {
+        const Icon = item.icon;
+        const isActive = location === item.path;
+
+        return (
+          <Link key={item.path} href={item.path}>
+            <button
+              data-testid={item.testId}
+              className={`inline-flex h-10 items-center gap-2 rounded-md px-3 text-sm font-semibold transition-colors ${
+                isActive
+                  ? "bg-white text-primary"
+                  : "text-primary-foreground/78 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {item.label}
+            </button>
+          </Link>
+        );
+      })}
+    </nav>
   );
 }
 
@@ -165,18 +197,16 @@ function Router() {
   }
 
   return (
-    <div className="min-h-screen pb-20 bg-background">
-      <header className="sticky top-0 z-40 bg-primary text-primary-foreground shadow-md">
-        <div className="flex items-center justify-between h-16 px-4">
+    <div className="min-h-screen pb-20 md:pb-0 bg-background">
+      <header className="sticky top-0 z-40 bg-primary text-primary-foreground shadow-sm">
+        <div className="flex items-center justify-between gap-4 min-h-16 px-4 md:px-8">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 bg-white/20 rounded flex items-center justify-center text-xl font-bold">
-              LD
-            </div>
             <div className="flex flex-col">
               <span className="text-base font-semibold leading-tight">LeaseDesk</span>
-              <span className="text-sm opacity-90 leading-tight">Commercial Lease Management</span>
+              <span className="text-xs opacity-75 leading-tight">Commercial property operations</span>
             </div>
           </div>
+          <TopNav />
           <div className="flex items-center gap-2">
             <span className="hidden sm:inline text-sm opacity-90">{auth.user.username}</span>
             <Button

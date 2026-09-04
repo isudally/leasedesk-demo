@@ -18,8 +18,8 @@ import type { Tenant } from "@shared/schema";
 import { CalendarIcon, AlertCircle, CheckCircle2 } from "lucide-react";
 
 const paymentSchema = z.object({
-  tenantId: z.string().min(1, "Veuillez sélectionner un locataire"),
-  receivedBy: z.string().min(1, "Veuillez sélectionner qui a reçu le paiement"),
+  tenantId: z.string().min(1, "Select a tenant"),
+  receivedBy: z.string().min(1, "Select who received the payment"),
   paymentDate: z.string().min(1, "Date requise"),
   monthYear: z.string().min(1, "Mois/Année requis"),
   rentAmount: z.string().min(1, "Montant requis"),
@@ -148,6 +148,7 @@ export function RecordPaymentForm({ preselectedTenantId, onSuccess, onPaymentRec
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tenants/arrears"] });
       if (selectedTenantId) {
         queryClient.invalidateQueries({ queryKey: ["/api/payments", selectedTenantId] });
         // Invalidate arrears to refresh unpaid months and totals
@@ -169,7 +170,7 @@ export function RecordPaymentForm({ preselectedTenantId, onSuccess, onPaymentRec
     },
     onError: (error) => {
       toast({
-        title: "Erreur",
+        title: "Error",
         description: "Could not record the payment.",
         variant: "destructive",
       });

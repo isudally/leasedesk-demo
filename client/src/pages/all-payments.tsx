@@ -201,14 +201,14 @@ export default function AllPayments() {
           </Card>
 
           {/* Summary Card */}
-          <Card className="mb-6" style={{ backgroundColor: '#E6F1EC' }}>
+          <Card className="mb-6 border bg-white shadow-sm">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-base text-muted-foreground mb-1">
                     {hasActiveFilters ? 'Filtered' : 'Total'} Payments
                   </p>
-                  <p className="text-3xl font-bold" style={{ color: '#325A89' }}>
+                  <p className="text-3xl font-bold text-primary">
                     Rs {totalPaymentsAmount.toLocaleString()}
                   </p>
                 </div>
@@ -216,7 +216,7 @@ export default function AllPayments() {
                   <p className="text-base text-muted-foreground mb-1">
                     Payment Count
                   </p>
-                  <p className="text-3xl font-bold" style={{ color: '#325A89' }}>
+                  <p className="text-3xl font-bold text-primary">
                     {filteredPayments.length}
                   </p>
                 </div>
