@@ -110,7 +110,7 @@ export default function TenantDetails() {
     },
     onError: (error: Error) => {
       toast({
-        title: "Erreur",
+        title: "Error",
         description: error.message || "Échec de l'archivage du locataire.",
         variant: "destructive",
       });
@@ -133,7 +133,7 @@ export default function TenantDetails() {
     },
     onError: (error: Error) => {
       toast({
-        title: "Erreur",
+        title: "Error",
         description: error.message || "Échec de l'archivage du locataire.",
         variant: "destructive",
       });
@@ -364,14 +364,14 @@ export default function TenantDetails() {
         {/* Lease Information */}
         <Card className="bg-card rounded-lg shadow-md mb-6">
           <CardHeader className="p-6">
-            <CardTitle className="text-2xl font-semibold text-foreground">Détails du Bail</CardTitle>
+            <CardTitle className="text-2xl font-semibold text-foreground">Lease Details</CardTitle>
           </CardHeader>
           <CardContent className="p-6 pt-0">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="flex items-start gap-3">
                 <Calendar className="w-6 h-6 text-muted-foreground mt-1" />
                 <div>
-                  <p className="text-lg text-muted-foreground">Période de Location</p>
+                  <p className="text-lg text-muted-foreground">Lease Period</p>
                   <p className="text-lg font-medium text-foreground">
                     {new Date(tenant.leaseStart).toLocaleDateString('fr-FR')} - {new Date(tenant.leaseEnd).toLocaleDateString('fr-FR')}
                   </p>
@@ -381,7 +381,7 @@ export default function TenantDetails() {
               <div className="flex items-start gap-3">
                 <CreditCard className="w-6 h-6 text-muted-foreground mt-1" />
                 <div>
-                  <p className="text-lg text-muted-foreground">Loyer Mensuel</p>
+                  <p className="text-lg text-muted-foreground">Monthly Rent</p>
                   <p className="text-lg font-medium text-foreground">
                     Rs {parseFloat(tenant.monthlyRent.toString()).toLocaleString()}
                   </p>
@@ -392,7 +392,7 @@ export default function TenantDetails() {
                 <div className="flex items-start gap-3">
                   <CreditCard className="w-6 h-6 text-muted-foreground mt-1" />
                   <div>
-                    <p className="text-lg text-muted-foreground">Frais de Services</p>
+                    <p className="text-lg text-muted-foreground">Utilities / Services</p>
                     <p className="text-lg font-medium text-foreground">
                       Rs {parseFloat(tenant.utilitiesCharge.toString()).toLocaleString()}
                     </p>
@@ -404,12 +404,12 @@ export default function TenantDetails() {
                 <div className="flex items-start gap-3">
                   <CreditCard className="w-6 h-6 text-muted-foreground mt-1" />
                   <div>
-                    <p className="text-lg text-muted-foreground">Dépôt de Garantie</p>
+                    <p className="text-lg text-muted-foreground">Security Deposit</p>
                     <p className="text-lg font-medium text-foreground">
                       Rs {parseFloat(tenant.deposit.toString()).toLocaleString()}
                     </p>
                     <Badge variant={tenant.depositPaid ? "default" : "secondary"} className="mt-1">
-                      {tenant.depositPaid ? "Payé" : "Non Payé"}
+                      {tenant.depositPaid ? "Paid" : "Not Paid"}
                     </Badge>
                   </div>
                 </div>
@@ -430,7 +430,7 @@ export default function TenantDetails() {
               <div className="flex items-start gap-3">
                 <User className="w-6 h-6 text-muted-foreground mt-1" />
                 <div>
-                  <p className="text-lg text-muted-foreground">Propriétaire</p>
+                  <p className="text-lg text-muted-foreground">Landlord</p>
                   <p className="text-lg font-medium text-foreground">{landlord.fullName}</p>
                 </div>
               </div>

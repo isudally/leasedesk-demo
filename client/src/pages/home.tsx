@@ -2,13 +2,13 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import type { Tenant } from "@shared/schema";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Building2, Calendar, DollarSign, AlertCircle, UserPlus, RefreshCw, CreditCard, Users, Store as StoreIcon, Receipt } from "lucide-react";
+import { AlertCircle, Calendar, CreditCard, DollarSign, Receipt, RefreshCw, Store as StoreIcon, UserPlus, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AddTenantForm } from "@/components/add-tenant-form";
 import { RecordPaymentForm } from "@/components/record-payment-form";
 import { AddExpenseForm } from "@/components/add-expense-form";
@@ -147,164 +147,40 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between gap-3 mb-2">
-            <div className="flex items-center gap-4">
-              <div
-                className="w-20 h-20 rounded-lg bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold shadow-md"
-                data-testid="app-logo"
-              >
-                LD
-              </div>
-              <div>
-                <h1 className="text-2xl font-semibold text-foreground" data-testid="app-title">
-                  LeaseDesk Portfolio
-                </h1>
-                <p className="text-lg text-muted-foreground">Commercial property operations dashboard</p>
-              </div>
-            </div>
+        <div className="mb-8 flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
+              Commercial property operations
+            </p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-normal text-foreground md:text-4xl" data-testid="app-title">
+              LeaseDesk
+            </h1>
+            <p className="mt-2 max-w-2xl text-base text-muted-foreground">
+              Track leases, rent status, arrears and tenant documents from one working view.
+            </p>
           </div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            Conceptualised by TAKAVEN
+          </p>
         </div>
 
-        {/* Quick Actions - 2 per row, bigger */}
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold text-foreground mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div 
-              role="button"
-              tabIndex={0}
-              className="bg-white hover:bg-[#E6F1EC] rounded-lg shadow-md p-8 flex flex-col items-center justify-center gap-4 cursor-pointer active-elevate-2 transition-all duration-200 min-h-32"
-              data-testid="button-add-tenant"
-              onClick={() => setAddTenantDialogOpen(true)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  setAddTenantDialogOpen(true);
-                }
-              }}
-            >
-              <UserPlus className="w-12 h-12" style={{ color: '#325A89' }} />
-              <span className="text-xl font-semibold text-center" style={{ color: '#555555' }}>
-                Add Tenant
-              </span>
-            </div>
-
-            <div 
-              role="button"
-              tabIndex={0}
-              className="bg-white hover:bg-[#E6F1EC] rounded-lg shadow-md p-8 flex flex-col items-center justify-center gap-4 cursor-pointer active-elevate-2 transition-all duration-200 min-h-32"
-              data-testid="button-renew-contract"
-              onClick={() => setRenewContractDialogOpen(true)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  setRenewContractDialogOpen(true);
-                }
-              }}
-            >
-              <RefreshCw className="w-12 h-12" style={{ color: '#325A89' }} />
-              <span className="text-xl font-semibold text-center" style={{ color: '#555555' }}>
-                Renew Contract
-              </span>
-            </div>
-
-            <div 
-              role="button"
-              tabIndex={0}
-              className="bg-white hover:bg-[#E6F1EC] rounded-lg shadow-md p-8 flex flex-col items-center justify-center gap-4 cursor-pointer active-elevate-2 transition-all duration-200 min-h-32"
-              data-testid="button-record-payment"
-              onClick={() => setRecordPaymentDialogOpen(true)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  setRecordPaymentDialogOpen(true);
-                }
-              }}
-            >
-              <CreditCard className="w-12 h-12" style={{ color: '#325A89' }} />
-              <span className="text-xl font-semibold text-center" style={{ color: '#555555' }}>
-                Record Payment
-              </span>
-            </div>
-
-            <div 
-              role="button"
-              tabIndex={0}
-              className="bg-white hover:bg-[#E6F1EC] rounded-lg shadow-md p-8 flex flex-col items-center justify-center gap-4 cursor-pointer active-elevate-2 transition-all duration-200 min-h-32"
-              data-testid="button-record-expense"
-              onClick={() => setAddExpenseDialogOpen(true)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  setAddExpenseDialogOpen(true);
-                }
-              }}
-            >
-              <Receipt className="w-12 h-12" style={{ color: '#325A89' }} />
-              <span className="text-xl font-semibold text-center" style={{ color: '#555555' }}>
-                Record Expense
-              </span>
+        <section className="mb-8" aria-labelledby="attention-heading">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <div>
+              <h2 id="attention-heading" className="text-xl font-semibold text-foreground">
+                Operational attention
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Arrears, rent movement and lease dates first.
+              </p>
             </div>
           </div>
-        </div>
 
-        {/* Recent Tenants */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-semibold text-foreground">Tenants</h2>
-          </div>
-
-          {/* Metric Cards - Just above Tenants */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
             <div 
               role="button"
               tabIndex={0}
-              className="bg-white hover:bg-[#E6F1EC] rounded-lg shadow-md p-4 flex flex-col items-center justify-center gap-2 cursor-pointer active-elevate-2 transition-all duration-200"
-              data-testid="card-active-tenants"
-              onClick={() => setTenantFilter("active")}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  setTenantFilter("active");
-                }
-              }}
-            >
-              <Users className="w-8 h-8" style={{ color: '#325A89' }} />
-              <div className="text-2xl font-bold text-foreground" data-testid="metric-active-tenants">
-                {activeTenants}
-              </div>
-              <span className="text-base font-semibold text-center" style={{ color: '#555555' }}>
-                Active Tenants
-              </span>
-            </div>
-
-            <div 
-              role="button"
-              tabIndex={0}
-              className="bg-white hover:bg-[#E6F1EC] rounded-lg shadow-md p-4 flex flex-col items-center justify-center gap-2 cursor-pointer active-elevate-2 transition-all duration-200"
-              data-testid="card-expiring-soon"
-              onClick={() => setTenantFilter("expiring")}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  setTenantFilter("expiring");
-                }
-              }}
-            >
-              <Calendar className="w-8 h-8" style={{ color: '#F59E0B' }} />
-              <div className="text-2xl font-bold text-foreground" data-testid="metric-expiring-soon">
-                {expiringSoon}
-              </div>
-              <span className="text-base font-semibold text-center" style={{ color: '#555555' }}>
-                Expiring Soon
-              </span>
-            </div>
-
-            <div 
-              role="button"
-              tabIndex={0}
-              className="bg-white hover:bg-[#E6F1EC] rounded-lg shadow-md p-4 flex flex-col items-center justify-center gap-2 cursor-pointer active-elevate-2 transition-all duration-200"
+              className="rounded-lg border border-red-200 bg-white p-5 shadow-sm transition-colors hover:bg-red-50 sm:col-span-2 xl:col-span-2"
               data-testid="card-unpaid-rent"
               onClick={() => setTenantFilter("unpaid")}
               onKeyDown={(e) => {
@@ -314,41 +190,20 @@ export default function Home() {
                 }
               }}
             >
-              <AlertCircle className="w-8 h-8" style={{ color: '#EF4444' }} />
-              <div className="text-xl font-bold text-foreground" data-testid="metric-unpaid-rent">
+              <div className="mb-4 flex items-center gap-3 text-red-600">
+                <AlertCircle className="h-5 w-5" />
+                <span className="text-sm font-bold uppercase tracking-[0.12em]">Overdue rent</span>
+              </div>
+              <div className="text-3xl font-semibold text-foreground" data-testid="metric-unpaid-rent">
                 Rs {totalUnpaidRent.toLocaleString()}
               </div>
-              <span className="text-base font-semibold text-center" style={{ color: '#555555' }}>
-                Unpaid Rent
-              </span>
+              <p className="mt-2 text-sm text-muted-foreground">{tenantsWithArrears} tenant{tenantsWithArrears === 1 ? "" : "s"} need follow-up</p>
             </div>
 
             <div 
               role="button"
               tabIndex={0}
-              className="bg-white hover:bg-[#E6F1EC] rounded-lg shadow-md p-4 flex flex-col items-center justify-center gap-2 cursor-pointer active-elevate-2 transition-all duration-200"
-              data-testid="card-monthly-revenue"
-              onClick={() => setTenantFilter("active")}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  setTenantFilter("active");
-                }
-              }}
-            >
-              <DollarSign className="w-8 h-8" style={{ color: '#325A89' }} />
-              <div className="text-xl font-bold text-foreground" data-testid="metric-monthly-revenue">
-                Rs {monthlyRevenue.toLocaleString()}
-              </div>
-              <span className="text-base font-semibold text-center" style={{ color: '#555555' }}>
-                Monthly Revenue
-              </span>
-            </div>
-
-            <div 
-              role="button"
-              tabIndex={0}
-              className="bg-white hover:bg-[#E6F1EC] rounded-lg shadow-md p-4 flex flex-col items-center justify-center gap-2 cursor-pointer active-elevate-2 transition-all duration-200"
+              className="rounded-lg border bg-white p-5 shadow-sm transition-colors hover:bg-muted"
               data-testid="card-total-payments"
               onClick={() => navigate("/payments")}
               onKeyDown={(e) => {
@@ -358,79 +213,203 @@ export default function Home() {
                 }
               }}
             >
-              <CreditCard className="w-8 h-8" style={{ color: '#10B981' }} />
+              <CreditCard className="mb-3 h-5 w-5 text-chart-2" />
               {isLoadingPayments ? (
                 <Skeleton className="h-7 w-24" />
               ) : (
-                <div className="text-xl font-bold text-foreground" data-testid="metric-total-payments">
+                <div className="text-xl font-semibold text-foreground" data-testid="metric-total-payments">
                   Rs {totalPayments.toLocaleString()}
                 </div>
               )}
-              <span className="text-base font-semibold text-center" style={{ color: '#555555' }}>
-                Total Payments
+              <span className="text-sm text-muted-foreground">Payments received</span>
+            </div>
+
+            <div 
+              role="button"
+              tabIndex={0}
+              className="rounded-lg border bg-white p-5 shadow-sm transition-colors hover:bg-muted"
+              data-testid="card-expiring-soon"
+              onClick={() => setTenantFilter("expiring")}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setTenantFilter("expiring");
+                }
+              }}
+            >
+              <Calendar className="mb-3 h-5 w-5 text-amber-600" />
+              <div className="text-xl font-semibold text-foreground" data-testid="metric-expiring-soon">
+                {expiringSoon}
+              </div>
+              <span className="text-sm text-muted-foreground">Expiring leases</span>
+            </div>
+
+            <div 
+              role="button"
+              tabIndex={0}
+              className="rounded-lg border bg-white p-5 shadow-sm transition-colors hover:bg-muted"
+              data-testid="card-active-tenants"
+              onClick={() => setTenantFilter("active")}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setTenantFilter("active");
+                }
+              }}
+            >
+              <Users className="mb-3 h-5 w-5 text-primary" />
+              <div className="text-xl font-semibold text-foreground" data-testid="metric-active-tenants">
+                {activeTenants}
+              </div>
+              <span className="text-sm text-muted-foreground">Active tenants</span>
+            </div>
+
+            <div 
+              role="button"
+              tabIndex={0}
+              className="rounded-lg border bg-white p-5 shadow-sm transition-colors hover:bg-muted"
+              data-testid="card-monthly-revenue"
+              onClick={() => setTenantFilter("active")}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setTenantFilter("active");
+                }
+              }}
+            >
+              <DollarSign className="mb-3 h-5 w-5 text-primary" />
+              <div className="text-xl font-semibold text-foreground" data-testid="metric-monthly-revenue">
+                Rs {monthlyRevenue.toLocaleString()}
+              </div>
+              <span className="text-sm text-muted-foreground">Monthly rent roll</span>
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-8" aria-labelledby="actions-heading">
+          <div className="mb-3 flex items-center justify-between gap-4">
+            <h2 id="actions-heading" className="text-lg font-semibold text-foreground">Actions</h2>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div 
+              role="button"
+              tabIndex={0}
+              className="flex cursor-pointer items-center gap-3 rounded-lg border bg-white p-4 shadow-sm transition-colors hover:bg-muted"
+              data-testid="button-add-tenant"
+              onClick={() => setAddTenantDialogOpen(true)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setAddTenantDialogOpen(true);
+                }
+              }}
+            >
+              <UserPlus className="h-5 w-5 text-primary" />
+              <span className="text-sm font-semibold text-foreground">
+                Add Tenant
               </span>
             </div>
 
             <div 
               role="button"
               tabIndex={0}
-              className="bg-white hover:bg-[#E6F1EC] rounded-lg shadow-md p-4 flex flex-col items-center justify-center gap-2 cursor-pointer active-elevate-2 transition-all duration-200"
-              data-testid="card-total-expenses"
-              onClick={() => navigate("/expenses")}
+              className="flex cursor-pointer items-center gap-3 rounded-lg border bg-white p-4 shadow-sm transition-colors hover:bg-muted"
+              data-testid="button-renew-contract"
+              onClick={() => setRenewContractDialogOpen(true)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  navigate("/expenses");
+                  setRenewContractDialogOpen(true);
                 }
               }}
             >
-              <Receipt className="w-8 h-8" style={{ color: '#F59E0B' }} />
-              {isLoadingExpenses ? (
-                <Skeleton className="h-7 w-24" />
-              ) : (
-                <div className="text-xl font-bold text-foreground" data-testid="metric-total-expenses">
-                  Rs {totalExpenses.toLocaleString()}
-                </div>
-              )}
-              <span className="text-base font-semibold text-center" style={{ color: '#555555' }}>
-                Total Expenses
+              <RefreshCw className="h-5 w-5 text-primary" />
+              <span className="text-sm font-semibold text-foreground">
+                Renew Lease
               </span>
+            </div>
+
+            <div 
+              role="button"
+              tabIndex={0}
+              className="flex cursor-pointer items-center gap-3 rounded-lg border bg-white p-4 shadow-sm transition-colors hover:bg-muted"
+              data-testid="button-record-payment"
+              onClick={() => setRecordPaymentDialogOpen(true)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setRecordPaymentDialogOpen(true);
+                }
+              }}
+            >
+              <CreditCard className="h-5 w-5 text-chart-2" />
+              <span className="text-sm font-semibold text-foreground">
+                Record Payment
+              </span>
+            </div>
+
+            <div 
+              role="button"
+              tabIndex={0}
+              className="flex cursor-pointer items-center gap-3 rounded-lg border bg-white p-4 shadow-sm transition-colors hover:bg-muted"
+              data-testid="button-record-expense"
+              onClick={() => setAddExpenseDialogOpen(true)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setAddExpenseDialogOpen(true);
+                }
+              }}
+            >
+              <Receipt className="h-5 w-5 text-amber-600" />
+              <span className="text-sm font-semibold text-foreground">
+                Record Expense
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold text-foreground">Tenant and lease work</h2>
+              <p className="text-sm text-muted-foreground">Sorted by lease date so expiring and overdue work stays visible.</p>
             </div>
           </div>
           
           <Tabs value={tenantFilter} onValueChange={(v) => setTenantFilter(v as "active" | "inactive" | "expiring" | "unpaid" | "all")} className="mb-4">
-            <TabsList className="grid w-full grid-cols-5 h-12 bg-gray-200">
+            <TabsList className="flex h-auto w-full justify-start gap-2 overflow-x-auto bg-transparent p-0">
               <TabsTrigger 
                 value="active" 
-                className="text-base data-[state=active]:bg-gray-500 data-[state=active]:text-white" 
+                className="whitespace-nowrap rounded-md border bg-white px-3 py-2 text-sm data-[state=active]:bg-primary data-[state=active]:text-white" 
                 data-testid="tab-active"
               >
                 Active ({tenants?.filter(t => t.isActive).length || 0})
               </TabsTrigger>
               <TabsTrigger 
                 value="expiring" 
-                className="text-base data-[state=active]:bg-gray-500 data-[state=active]:text-white" 
+                className="whitespace-nowrap rounded-md border bg-white px-3 py-2 text-sm data-[state=active]:bg-primary data-[state=active]:text-white" 
                 data-testid="tab-expiring"
               >
                 Expiring ({expiringSoon})
               </TabsTrigger>
               <TabsTrigger 
                 value="unpaid" 
-                className="text-base data-[state=active]:bg-gray-500 data-[state=active]:text-white" 
+                className="whitespace-nowrap rounded-md border bg-white px-3 py-2 text-sm data-[state=active]:bg-primary data-[state=active]:text-white" 
                 data-testid="tab-unpaid"
               >
                 Unpaid ({tenantsWithArrears})
               </TabsTrigger>
               <TabsTrigger 
                 value="inactive" 
-                className="text-base data-[state=active]:bg-gray-500 data-[state=active]:text-white" 
+                className="whitespace-nowrap rounded-md border bg-white px-3 py-2 text-sm data-[state=active]:bg-primary data-[state=active]:text-white" 
                 data-testid="tab-expired"
               >
                 Expired ({tenants?.filter(t => !t.isActive).length || 0})
               </TabsTrigger>
               <TabsTrigger 
                 value="all" 
-                className="text-base data-[state=active]:bg-gray-500 data-[state=active]:text-white" 
+                className="whitespace-nowrap rounded-md border bg-white px-3 py-2 text-sm data-[state=active]:bg-primary data-[state=active]:text-white" 
                 data-testid="tab-all"
               >
                 All ({tenants?.length || 0})
@@ -440,7 +419,7 @@ export default function Home() {
 
           <div className="space-y-4">
             {recentTenants.length === 0 ? (
-              <Card className="bg-card rounded-lg shadow-md p-6">
+              <Card className="bg-card rounded-lg border shadow-sm p-6">
                 <p className="text-lg text-muted-foreground text-center">No tenants yet. Add your first tenant to get started!</p>
               </Card>
             ) : (
@@ -449,23 +428,23 @@ export default function Home() {
                 return (
                   <Card 
                     key={tenant.id} 
-                    className="bg-card rounded-lg shadow-md hover-elevate cursor-pointer"
+                    className="bg-card rounded-lg border shadow-sm hover-elevate cursor-pointer"
                     data-testid={`tenant-card-${tenant.id}`}
                     onClick={() => navigate(`/tenants/${tenant.id}`)}
                   >
-                    <CardContent className="p-6">
+                    <CardContent className="p-4 sm:p-5">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3 mb-2">
-                            <div className="w-12 h-12 rounded-lg bg-accent flex items-center justify-center flex-shrink-0">
-                              <StoreIcon className="w-6 h-6 text-accent-foreground" />
+                            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                              <StoreIcon className="w-5 h-5 text-primary" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h3 className="text-xl font-semibold text-foreground truncate" data-testid={`tenant-name-${tenant.id}`}>
+                              <h3 className="text-lg font-semibold text-foreground truncate" data-testid={`tenant-name-${tenant.id}`}>
                                 {tenant.tenantName}
                               </h3>
                               {tenant.businessName && (
-                                <p className="text-lg text-muted-foreground truncate" data-testid={`business-name-${tenant.id}`}>
+                                <p className="text-sm text-muted-foreground truncate" data-testid={`business-name-${tenant.id}`}>
                                   {tenant.businessName}
                                 </p>
                               )}
@@ -473,14 +452,14 @@ export default function Home() {
                           </div>
                           <div className="flex items-center gap-4 flex-wrap mt-3">
                             <div>
-                              <p className="text-lg text-muted-foreground">Monthly Rent</p>
-                              <p className="text-lg font-semibold text-foreground" data-testid={`rent-${tenant.id}`}>
+                              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">Monthly Rent</p>
+                              <p className="text-sm font-semibold text-foreground" data-testid={`rent-${tenant.id}`}>
                                 Rs {parseFloat(tenant.monthlyRent.toString()).toLocaleString()}
                               </p>
                             </div>
                             <div>
-                              <p className="text-lg text-muted-foreground">Lease Ends</p>
-                              <p className="text-lg font-semibold text-foreground" data-testid={`lease-end-${tenant.id}`}>
+                              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">Lease Ends</p>
+                              <p className="text-sm font-semibold text-foreground" data-testid={`lease-end-${tenant.id}`}>
                                 {new Date(tenant.leaseEnd).toLocaleDateString('en-US', { 
                                   year: 'numeric', 
                                   month: 'short', 
@@ -491,7 +470,7 @@ export default function Home() {
                           </div>
                         </div>
                         <Badge 
-                          className="text-lg px-4 py-2 flex-shrink-0 capitalize"
+                          className="px-3 py-1 text-sm flex-shrink-0 capitalize"
                           style={{ 
                             backgroundColor: color,
                             color: 'white'
@@ -507,7 +486,7 @@ export default function Home() {
               })
             )}
           </div>
-        </div>
+        </section>
       </div>
 
       <Dialog open={addTenantDialogOpen} onOpenChange={setAddTenantDialogOpen}>

@@ -213,13 +213,13 @@ export function AddTenantForm({ onSuccess }: AddTenantFormProps) {
 
         <div className="grid grid-cols-1 gap-6">
           <div
-            className="bg-white rounded-lg shadow-md p-8 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[#E6F1EC] active-elevate-2 transition-all duration-200 min-h-32"
+            className="bg-white rounded-lg border shadow-sm p-8 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-muted active-elevate-2 transition-all duration-200 min-h-32"
             onClick={() => handleTypeSelection("individual")}
             data-testid="card-select-individual"
           >
-            <User className="w-16 h-16" style={{ color: '#325A89' }} />
+            <User className="w-16 h-16 text-primary" />
             <div className="text-center">
-              <h3 className="text-xl font-semibold" style={{ color: '#555555' }}>
+              <h3 className="text-xl font-semibold text-foreground">
                 Individual
               </h3>
               <p className="text-lg text-muted-foreground mt-1">
@@ -229,13 +229,13 @@ export function AddTenantForm({ onSuccess }: AddTenantFormProps) {
           </div>
 
           <div
-            className="bg-white rounded-lg shadow-md p-8 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[#E6F1EC] active-elevate-2 transition-all duration-200 min-h-32"
+            className="bg-white rounded-lg border shadow-sm p-8 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-muted active-elevate-2 transition-all duration-200 min-h-32"
             onClick={() => handleTypeSelection("company")}
             data-testid="card-select-company"
           >
-            <Building2 className="w-16 h-16" style={{ color: '#325A89' }} />
+            <Building2 className="w-16 h-16 text-primary" />
             <div className="text-center">
-              <h3 className="text-xl font-semibold" style={{ color: '#555555' }}>
+              <h3 className="text-xl font-semibold text-foreground">
                 Company
               </h3>
               <p className="text-lg text-muted-foreground mt-1">
@@ -259,7 +259,7 @@ export function AddTenantForm({ onSuccess }: AddTenantFormProps) {
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-lg transition-colors ${
                   step >= s
-                    ? 'bg-[#325A89] text-white'
+                    ? 'bg-primary text-white'
                     : 'bg-gray-200 text-gray-500'
                 }`}
               >
@@ -268,7 +268,7 @@ export function AddTenantForm({ onSuccess }: AddTenantFormProps) {
               {s < 4 && (
                 <div
                   className={`flex-1 h-1 mx-2 transition-colors ${
-                    step > s ? 'bg-[#325A89]' : 'bg-gray-200'
+                    step > s ? 'bg-primary' : 'bg-gray-200'
                   }`}
                 />
               )}
@@ -685,7 +685,6 @@ export function AddTenantForm({ onSuccess }: AddTenantFormProps) {
                 type="button"
                 onClick={handleNext}
                 className="flex-1 h-14 text-lg font-semibold"
-                style={{ backgroundColor: '#325A89' }}
                 data-testid="button-next"
               >
                 Next
@@ -695,7 +694,6 @@ export function AddTenantForm({ onSuccess }: AddTenantFormProps) {
               <Button
                 type="submit"
                 className="flex-1 h-14 text-lg font-semibold"
-                style={{ backgroundColor: '#325A89' }}
                 disabled={createTenantMutation.isPending}
                 data-testid="button-submit"
               >

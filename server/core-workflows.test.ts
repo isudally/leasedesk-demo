@@ -221,6 +221,31 @@ test("tenant arrears action opens the record payment flow instead of directly cr
   assert.doesNotMatch(tenantDetailsSource, /REC-\$\{year\}-\$\{randomNum\}/);
 });
 
+test("recording a payment refreshes dashboard payment and arrears summaries", () => {
+  const recordPaymentSource = fs.readFileSync(
+    path.resolve(process.cwd(), "client/src/components/record-payment-form.tsx"),
+    "utf8",
+  );
+  const homeSource = fs.readFileSync(path.resolve(process.cwd(), "client/src/pages/home.tsx"), "utf8");
+
+  assert.match(homeSource, /queryKey:\s*\["\/api\/tenants\/arrears"\]/);
+  assert.match(homeSource, /queryKey:\s*\["\/api\/payments"\]/);
+  assert.match(recordPaymentSource, /invalidateQueries\(\{\s*queryKey:\s*\["\/api\/payments"\]\s*\}\)/);
+  assert.match(recordPaymentSource, /invalidateQueries\(\{\s*queryKey:\s*\["\/api\/tenants\/arrears"\]\s*\}\)/);
+});
+
+test("commercial LeaseDesk shell removes prototype identity and desktop mobile-nav treatment", () => {
+  const appSource = fs.readFileSync(path.resolve(process.cwd(), "client/src/App.tsx"), "utf8");
+  const homeSource = fs.readFileSync(path.resolve(process.cwd(), "client/src/pages/home.tsx"), "utf8");
+
+  assert.doesNotMatch(homeSource, /LeaseDesk Portfolio/);
+  assert.doesNotMatch(homeSource, /data-testid="app-logo"[\s\S]*LD/);
+  assert.match(homeSource, /Conceptualised by TAKAVEN/);
+  assert.match(homeSource, /Operational attention/);
+  assert.match(appSource, /md:hidden/);
+  assert.match(appSource, /aria-label="Primary navigation"/);
+});
+
 async function login(baseUrl: string) {
   const response = await fetch(`${baseUrl}/api/auth/login`, {
     method: "POST",
