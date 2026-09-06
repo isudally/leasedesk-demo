@@ -45,9 +45,13 @@ Use only disposable test databases and fictional data for verification.
 - `/health` confirms the application process is responding.
 - `/ready` confirms the configured storage path and backing data store are reachable.
 
+## Deployment And Handover
+
+Use `DEPLOYMENT_RUNBOOK.md` for customer installation, smoke verification, credential handover, backup responsibility and post-handover support boundaries.
+
 ## Current Scope Boundaries
 
-LeaseDesk currently owns commercial landlord operations for properties/units, tenants, leases, payments, arrears, documents, expenses, and basic settings.
+LeaseDesk currently owns commercial landlord operations for properties/units, tenants, leases, payments, arrears, documents, expenses, and basic configuration.
 
 It does not own online rent collection, maintenance ticketing, advanced accounting, tenant marketplaces, enterprise property-management workflows, or jurisdiction-specific tax filing.
 
