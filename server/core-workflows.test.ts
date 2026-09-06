@@ -240,7 +240,9 @@ test("commercial LeaseDesk shell removes prototype identity and desktop mobile-n
 
   assert.doesNotMatch(homeSource, /LeaseDesk Portfolio/);
   assert.doesNotMatch(homeSource, /data-testid="app-logo"[\s\S]*LD/);
-  assert.match(homeSource, /Conceptualised by TAKAVEN/);
+  assert.match(homeSource, /leasedesk-endorsed-light\.svg/);
+  assert.match(homeSource, /alt="LeaseDesk by TAKAVEN"/);
+  assert.match(appSource, /leasedesk-endorsed-dark\.svg/);
   assert.match(homeSource, /Operational attention/);
   assert.match(appSource, /md:hidden/);
   assert.match(appSource, /aria-label="Primary navigation"/);
