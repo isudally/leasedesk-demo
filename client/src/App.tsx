@@ -51,7 +51,12 @@ function LoginPage() {
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl">LeaseDesk</CardTitle>
+          <img
+            src="/brand/leasedesk-endorsed-light.svg"
+            alt="LeaseDesk by TAKAVEN"
+            className="h-auto w-44"
+          />
+          <CardTitle className="sr-only">LeaseDesk</CardTitle>
           <CardDescription>Sign in to manage commercial lease operations.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -187,7 +192,14 @@ function Router() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-sm text-muted-foreground">Loading LeaseDesk...</p>
+        <div className="flex flex-col items-center gap-3">
+          <img
+            src="/brand/leasedesk-endorsed-light.svg"
+            alt="LeaseDesk by TAKAVEN"
+            className="h-auto w-44"
+          />
+          <p className="text-sm text-muted-foreground">Loading LeaseDesk...</p>
+        </div>
       </div>
     );
   }
@@ -200,11 +212,15 @@ function Router() {
     <div className="min-h-screen pb-20 md:pb-0 bg-background">
       <header className="sticky top-0 z-40 bg-primary text-primary-foreground shadow-sm">
         <div className="flex items-center justify-between gap-4 min-h-16 px-4 md:px-8">
-          <div className="flex items-center gap-3">
-            <div className="flex flex-col">
-              <span className="text-base font-semibold leading-tight">LeaseDesk</span>
-              <span className="text-xs opacity-75 leading-tight">Commercial property operations</span>
-            </div>
+          <div className="flex min-w-0 items-center gap-3">
+            <img
+              src="/brand/leasedesk-endorsed-dark.svg"
+              alt="LeaseDesk by TAKAVEN"
+              className="h-auto w-36 shrink-0 sm:w-44"
+            />
+            <span className="hidden border-l border-white/20 pl-3 text-xs opacity-75 leading-tight lg:inline">
+              Commercial property operations
+            </span>
           </div>
           <TopNav />
           <div className="flex items-center gap-2">

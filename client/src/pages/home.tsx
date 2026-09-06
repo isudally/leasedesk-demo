@@ -152,16 +152,16 @@ export default function Home() {
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
               Commercial property operations
             </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-normal text-foreground md:text-4xl" data-testid="app-title">
-              LeaseDesk
-            </h1>
+            <img
+              src="/brand/leasedesk-endorsed-light.svg"
+              alt="LeaseDesk by TAKAVEN"
+              className="mt-2 h-auto w-56 max-w-full md:w-72"
+              data-testid="app-title"
+            />
             <p className="mt-2 max-w-2xl text-base text-muted-foreground">
               Track leases, rent status, arrears and tenant documents from one working view.
             </p>
           </div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-            Conceptualised by TAKAVEN
-          </p>
         </div>
 
         <section className="mb-8" aria-labelledby="attention-heading">
